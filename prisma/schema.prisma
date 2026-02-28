@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String   // "TEACHER" or "STUDENT"
+  createdAt DateTime @default(now())
+
+  // Relations
+  createdAssignments Assignment[]        @relation("TeacherAssignments")
+  assignedTo         AssignmentStudent[]
+  submissions        Submission[]
+}
+
+model Assignment {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  createdById String
+  createdBy   User                @relation("TeacherAssignments", fields: [createdById], references: [id])
+  students    AssignmentStudent[]
+  submissions Submission[]
+}
+
+model AssignmentStudent {
+  assignmentId String
+  studentId    String
+  assignedAt   DateTime @default(now())
+
+  // Relations
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  student    User       @relation(fields: [studentId], references: [id])
+
+  @@id([assignmentId, studentId])
+}
+
+model Submission {
+  id             String    @id @default(cuid())
+  assignmentId   String
+  studentId      String
+  sfFile         String    @default("") // Full .sf JSON content
+  status         String    @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, SUBMITTED, GRADED
+  totalTimeSpent Int       @default(0) // Seconds
+  wordCount      Int       @default(0)
+  eventCount     Int       @default(0)
+  pasteCount     Int       @default(0)
+  tabAwayCount   Int       @default(0)
+  snapshotCount  Int       @default(0)
+  createdAt      DateTime  @default(now())
+  submittedAt    DateTime?
+
+  // Relations
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  student    User       @relation(fields: [studentId], references: [id])
+
+  @@unique([assignmentId, studentId])
+}
