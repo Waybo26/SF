@@ -60,14 +60,14 @@ export default function RootLayout({
             Editor
           </a>
           <a
-            href="/viewer"
+            href="/teacher"
             style={{
               textDecoration: "none",
               color: "#555",
               fontSize: "14px",
             }}
           >
-            Viewer
+            Teacher
           </a>
         </nav>
 

@@ -10,7 +10,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/seed", { method: "POST" });
       const data = await res.json();
-      setSeedStatus(`Done! Teacher: ${data.teacher.name}, Students: ${data.students.map((s: { name: string }) => s.name).join(", ")}, Assignment: ${data.assignment.title}`);
+      setSeedStatus(`Done! ${data.summary.teachers.length} teachers, ${data.summary.students.length} students, ${data.summary.classes.length} classes, ${data.summary.assignments.length} assignments`);
     } catch (err) {
       setSeedStatus(`Error: ${err}`);
     }
@@ -72,15 +72,15 @@ export default function Home() {
           }}
         >
           <h2 style={{ fontSize: "20px", marginBottom: "8px" }}>
-            Teacher Viewer
+            Teacher Dashboard
           </h2>
           <p style={{ color: "#666", fontSize: "14px", marginBottom: "16px" }}>
-            Upload a .sf file to replay the student&apos;s entire writing
-            session. See every keystroke, paste event, and tab switch on a
-            timeline.
+            View your classes, assignments, and student submissions. Review
+            every keystroke, paste event, and tab switch on a timeline to
+            verify writing authenticity.
           </p>
           <a
-            href="/viewer"
+            href="/teacher"
             style={{
               display: "inline-block",
               padding: "8px 20px",
@@ -91,7 +91,7 @@ export default function Home() {
               fontSize: "14px",
             }}
           >
-            Open Viewer
+            Open Dashboard
           </a>
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function Home() {
             {
               step: "4",
               title: "Review",
-              desc: "Teachers scrub through the timeline to review the writing process.",
+              desc: "Teachers browse their classes and scrub through submission timelines.",
             },
           ].map((item) => (
             <div key={item.step} style={{ textAlign: "center" }}>

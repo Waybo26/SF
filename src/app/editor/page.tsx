@@ -30,8 +30,7 @@ export default function EditorPage() {
 
   // Fetch students on mount
   useEffect(() => {
-    fetch("/api/seed", { method: "POST" })
-      .then(() => fetch("/api/users?role=STUDENT"))
+    fetch("/api/users?role=STUDENT")
       .then((r) => r.json())
       .then((data) => setStudents(data))
       .catch(() => {});

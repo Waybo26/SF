@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/assignments - List assignments (optionally filter by student)
+// GET /api/assignments - List assignments (optionally filter by student or teacher)
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const studentId = searchParams.get("studentId");
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
         assignment: {
           include: {
             createdBy: { select: { name: true } },
+            class: { select: { id: true, name: true } },
             submissions: {
               where: { studentId },
               select: { id: true, status: true },
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
     const assignments = await prisma.assignment.findMany({
       where: { createdById: teacherId },
       include: {
+        class: { select: { id: true, name: true } },
         students: { include: { student: { select: { id: true, name: true } } } },
         submissions: {
           select: { id: true, studentId: true, status: true, wordCount: true, pasteCount: true, tabAwayCount: true },
@@ -51,7 +53,10 @@ export async function GET(request: NextRequest) {
 
   // Return all assignments
   const assignments = await prisma.assignment.findMany({
-    include: { createdBy: { select: { name: true } } },
+    include: {
+      createdBy: { select: { name: true } },
+      class: { select: { id: true, name: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 

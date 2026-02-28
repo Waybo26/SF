@@ -21,6 +21,33 @@ model User {
   createdAssignments Assignment[]        @relation("TeacherAssignments")
   assignedTo         AssignmentStudent[]
   submissions        Submission[]
+  teacherClasses     Class[]             @relation("TeacherClasses")
+  enrolledClasses    ClassStudent[]
+}
+
+model Class {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+
+  // Relations
+  teacherId   String
+  teacher     User             @relation("TeacherClasses", fields: [teacherId], references: [id])
+  students    ClassStudent[]
+  assignments Assignment[]
+}
+
+model ClassStudent {
+  classId   String
+  studentId String
+  enrolledAt DateTime @default(now())
+
+  // Relations
+  class   Class @relation(fields: [classId], references: [id])
+  student User  @relation(fields: [studentId], references: [id])
+
+  @@id([classId, studentId])
 }
 
 model Assignment {
@@ -33,6 +60,8 @@ model Assignment {
   // Relations
   createdById String
   createdBy   User                @relation("TeacherAssignments", fields: [createdById], references: [id])
+  classId     String?
+  class       Class?              @relation(fields: [classId], references: [id])
   students    AssignmentStudent[]
   submissions Submission[]
 }
