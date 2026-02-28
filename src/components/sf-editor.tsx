@@ -53,6 +53,7 @@ export default function SFEditor({
   const logger = loggerRef.current;
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Underline,
@@ -316,14 +317,20 @@ export default function SFEditor({
 
       {/* Editor */}
       <div
+        onClick={() => editor?.commands.focus()}
         style={{
           border: "1px solid #ddd",
           borderTop: "none",
           minHeight: "400px",
           padding: "16px",
+          cursor: "text",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <EditorContent editor={editor} />
+        <div style={{ flex: 1 }}>
+          <EditorContent editor={editor} />
+        </div>
       </div>
 
       {/* Snapshot Section */}
