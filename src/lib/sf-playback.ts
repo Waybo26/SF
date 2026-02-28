@@ -6,6 +6,125 @@ import type {
 } from "./sf-types";
 
 /**
+ * Strips HTML tags and returns plain text.
+ * Converts <br> and block-level closing tags to newlines.
+ */
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<\/blockquote>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n+$/, "");
+}
+
+/**
+ * Convert a ProseMirror position to a plain text offset.
+ *
+ * ProseMirror positions count node boundary tokens (each block node
+ * opening adds +1). In a simple paragraph-based document the first
+ * paragraph opens at PM pos 1, so the first character is at PM pos 1.
+ * Subsequent paragraphs add +2 per boundary (close + open).
+ *
+ * Given a plain-text string where paragraphs are separated by "\n",
+ * we approximate the mapping by subtracting the accumulated structural
+ * offsets.
+ */
+function pmPosToTextOffset(pmPos: number, text: string): number {
+  // In ProseMirror: doc opens at 0, first <p> opens at 1.
+  // Characters inside first paragraph are at PM positions 1..len.
+  // Then </p> at len+1, next <p> at len+2, next chars start at len+2.
+  // In our plain text, paragraphs are separated by "\n".
+
+  // Walk through the text and map PM positions to text offsets.
+  let pmCursor = 1; // PM position of first char (inside first <p>)
+  let textOffset = 0;
+
+  // If there's no text, any position maps to 0
+  if (text.length === 0) return 0;
+
+  for (let i = 0; i < text.length; i++) {
+    if (pmCursor >= pmPos) {
+      return textOffset;
+    }
+    if (text[i] === "\n") {
+      // A newline in our text represents a paragraph break.
+      // In PM: current </p> = +1, next <p> = +1, so +2 total.
+      pmCursor += 2;
+      textOffset++;
+    } else {
+      pmCursor++;
+      textOffset++;
+    }
+  }
+
+  return textOffset;
+}
+
+/**
+ * Replay text-modifying events onto a plain text buffer.
+ * Returns the resulting plain text.
+ */
+function replayEvents(baseText: string, events: SFEvent[]): string {
+  let text = baseText;
+
+  for (const event of events) {
+    switch (event.type) {
+      case "keystroke": {
+        const offset = pmPosToTextOffset(event.position, text);
+        const char = event.key === "Enter" ? "\n" : event.key;
+        // Only insert printable characters and Enter
+        if (event.key.length === 1 || event.key === "Enter") {
+          text = text.slice(0, offset) + char + text.slice(offset);
+        }
+        break;
+      }
+      case "backspace": {
+        const offset = pmPosToTextOffset(event.position, text);
+        if (offset > 0) {
+          text = text.slice(0, offset - 1) + text.slice(offset);
+        }
+        break;
+      }
+      case "delete": {
+        const offset = pmPosToTextOffset(event.position, text);
+        if (offset < text.length) {
+          text = text.slice(0, offset) + text.slice(offset + 1);
+        }
+        break;
+      }
+      case "paste": {
+        const offset = pmPosToTextOffset(event.position, text);
+        text = text.slice(0, offset) + event.content + text.slice(offset);
+        break;
+      }
+      case "cut": {
+        const from = pmPosToTextOffset(event.from, text);
+        const to = pmPosToTextOffset(event.to, text);
+        if (from < to) {
+          text = text.slice(0, from) + text.slice(to);
+        }
+        break;
+      }
+      // selection, formatting, tab_away, tab_return, snapshot
+      // don't modify document text — skip them.
+    }
+  }
+
+  return text;
+}
+
+/**
  * SFPlaybackEngine - Reconstructs document state at any point in time
  * by replaying events from the nearest snapshot.
  */
@@ -48,29 +167,62 @@ export class SFPlaybackEngine {
   }
 
   /**
-   * Get the document HTML content at a specific timestamp.
-   * Uses the nearest snapshot before the timestamp as a base,
-   * or returns the snapshot content directly if available.
+   * Get the document content at a specific timestamp.
+   *
+   * Strategy:
+   * 1. If there is a snapshot at exactly this timestamp, return its HTML.
+   * 2. Find the nearest snapshot before this timestamp (if any) and use its
+   *    plain-text as the base, then replay all text-modifying events between
+   *    the snapshot and the target timestamp.
+   * 3. If no snapshot exists before this time, start from an empty string
+   *    and replay all events from the beginning up to the target timestamp.
+   *
+   * Returns plain text (paragraphs separated by newlines) between snapshots,
+   * or the snapshot HTML when the timestamp lands exactly on one.
    */
   getStateAtTime(timestamp: number): string {
-    // Find the nearest snapshot at or before this timestamp
+    // Sort snapshots by timestamp descending to find nearest before target
     const snapshotsBefore = this.file.snapshots
       .filter((s) => s.timestamp <= timestamp)
       .sort((a, b) => b.timestamp - a.timestamp);
 
+    // Determine base text and the start time for event replay
+    let baseText = "";
+    let replayFrom = 0; // replay events with timestamp > replayFrom
+
     if (snapshotsBefore.length > 0) {
-      // Return the most recent snapshot content at or before this time.
-      // For a more accurate reconstruction, we would replay events after
-      // this snapshot, but for the MVP, snapshot content is sufficient.
-      return snapshotsBefore[0].content;
+      const nearest = snapshotsBefore[0];
+
+      // If the timestamp is exactly at a snapshot, return its HTML directly
+      if (nearest.timestamp === timestamp) {
+        return nearest.content;
+      }
+
+      baseText = htmlToPlainText(nearest.content);
+      replayFrom = nearest.timestamp;
     }
 
-    // No snapshot before this time - return empty or first snapshot
-    if (this.file.snapshots.length > 0) {
+    // Collect text-modifying events between the base and the target timestamp
+    const eventsToReplay = this.sortedEvents.filter(
+      (e) => e.timestamp > replayFrom && e.timestamp <= timestamp
+    );
+
+    // If there are no events to replay, return what we have
+    if (eventsToReplay.length === 0) {
+      // Return the snapshot HTML if we had one, otherwise empty
+      if (snapshotsBefore.length > 0) {
+        return snapshotsBefore[0].content;
+      }
       return "";
     }
 
-    return "";
+    // Replay events onto the base text
+    const reconstructed = replayEvents(baseText, eventsToReplay);
+
+    // Convert plain text back to simple HTML paragraphs for rendering
+    if (!reconstructed) return "";
+    const paragraphs = reconstructed.split("\n");
+    return paragraphs.map((p) => `<p>${p || "<br>"}</p>`).join("");
   }
 
   /**
