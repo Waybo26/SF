@@ -57,6 +57,12 @@ export async function GET(request: NextRequest) {
         teacher: c.teacher,
         studentCount: c.students.length,
         assignmentCount: totalAssignments,
+        assignments: c.assignments.map((assignment) => ({
+          id: assignment.id,
+          title: assignment.title,
+          dueDate: assignment.dueDate,
+          status: assignment.submissions[0]?.status ?? "NOT_STARTED",
+        })),
         progress: {
           submitted,
           inProgress,

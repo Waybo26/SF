@@ -1,8 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Manrope } from "next/font/google";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { LoginModal } from "@/components/login-modal";
+
+interface AssignmentPreview {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  status: string;
+}
 
 interface ClassSummary {
   id: string;
@@ -17,6 +26,92 @@ interface ClassSummary {
     notStarted: number;
     total: number;
   };
+  assignments: AssignmentPreview[];
+}
+
+interface AssignmentQueueItem extends AssignmentPreview {
+  classId: string;
+  className: string;
+}
+
+type SortOption = "due-asc" | "due-desc" | "title-asc" | "title-desc";
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const STATUS_META: Record<
+  string,
+  { label: string; tone: string; action: "Start" | "Continue" | "View" }
+> = {
+  NOT_STARTED: {
+    label: "Not started",
+    tone: "bg-slate-100 text-slate-700",
+    action: "Start",
+  },
+  IN_PROGRESS: {
+    label: "In progress",
+    tone: "bg-blue-50 text-blue-700",
+    action: "Continue",
+  },
+  SUBMITTED: {
+    label: "Submitted",
+    tone: "bg-emerald-50 text-emerald-700",
+    action: "View",
+  },
+  GRADED: {
+    label: "Graded",
+    tone: "bg-violet-50 text-violet-700",
+    action: "View",
+  },
+};
+
+function isCompleted(status: string) {
+  return status === "SUBMITTED" || status === "GRADED";
+}
+
+function getStatusMeta(status: string) {
+  return STATUS_META[status] ?? STATUS_META.NOT_STARTED;
+}
+
+function parseDueDate(dueDate: string | null) {
+  if (!dueDate) return null;
+  const parsed = new Date(dueDate);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isOverdue(dueDate: string | null) {
+  const parsed = parseDueDate(dueDate);
+  if (!parsed) return false;
+  return parsed.getTime() < Date.now();
+}
+
+function isDueSoon(dueDate: string | null) {
+  const parsed = parseDueDate(dueDate);
+  if (!parsed) return false;
+  const diffDays = (parsed.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+  return diffDays >= 0 && diffDays <= 3;
+}
+
+function formatDueDate(dueDate: string | null) {
+  const parsed = parseDueDate(dueDate);
+  if (!parsed) return "No due date";
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getAssignmentPriority(assignment: AssignmentQueueItem) {
+  const completed = isCompleted(assignment.status);
+
+  if (isOverdue(assignment.dueDate) && !completed) return 0;
+  if (isDueSoon(assignment.dueDate) && !completed) return 1;
+  if (assignment.status === "IN_PROGRESS") return 2;
+  if (assignment.status === "NOT_STARTED") return 3;
+  return 4;
 }
 
 export default function StudentDashboard() {
@@ -24,6 +119,7 @@ export default function StudentDashboard() {
   const [showLogin, setShowLogin] = useState(false);
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>("due-asc");
 
   useEffect(() => {
     if (!user || user.role !== "STUDENT") return;
@@ -37,37 +133,77 @@ export default function StudentDashboard() {
       .catch(() => setLoading(false));
   }, [user]);
 
+  const assignmentQueue = useMemo<AssignmentQueueItem[]>(() => {
+    return classes.flatMap((cls) =>
+      cls.assignments.map((assignment) => ({
+        ...assignment,
+        classId: cls.id,
+        className: cls.name,
+      }))
+    );
+  }, [classes]);
+
+  const allAssignments = useMemo(() => {
+    return [...assignmentQueue].sort((a, b) => {
+      if (sortBy === "title-asc") {
+        return a.title.localeCompare(b.title);
+      }
+
+      if (sortBy === "title-desc") {
+        return b.title.localeCompare(a.title);
+      }
+
+      const aDate = parseDueDate(a.dueDate);
+      const bDate = parseDueDate(b.dueDate);
+
+      // Keep assignments without due dates at the end for readability.
+      if (!aDate && !bDate) {
+        return a.title.localeCompare(b.title);
+      }
+      if (!aDate) return 1;
+      if (!bDate) return -1;
+
+      if (sortBy === "due-desc") {
+        return bDate.getTime() - aDate.getTime();
+      }
+
+      const dueAscDiff = aDate.getTime() - bDate.getTime();
+      if (dueAscDiff !== 0) return dueAscDiff;
+
+      const priorityDiff = getAssignmentPriority(a) - getAssignmentPriority(b);
+      if (priorityDiff !== 0) return priorityDiff;
+
+      return a.title.localeCompare(b.title);
+    });
+  }, [assignmentQueue, sortBy]);
+
   if (isLoading) {
     return (
-      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 20px" }}>
-        <p style={{ color: "#666", fontSize: "14px" }}>Loading...</p>
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">Loading your dashboard...</p>
+        </div>
       </div>
     );
   }
 
   if (!isLoggedIn || !user) {
     return (
-      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 20px" }}>
-        <h1 style={{ fontSize: "24px", marginBottom: "24px" }}>
-          Student Dashboard
-        </h1>
-        <p style={{ color: "#666", marginBottom: "24px", fontSize: "14px" }}>
-          You need to log in as a student to access your classes.
-        </p>
-        <button
-          onClick={() => setShowLogin(true)}
-          style={{
-            padding: "10px 24px",
-            background: "#1d4ed8",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "14px",
-          }}
-        >
-          Login
-        </button>
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Student Dashboard
+          </h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Log in as a student to see your assignments and get started.
+          </p>
+          <button
+            onClick={() => setShowLogin(true)}
+            className="mt-6 inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+          >
+            Login
+          </button>
+        </div>
         <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />
       </div>
     );
@@ -75,183 +211,140 @@ export default function StudentDashboard() {
 
   if (user.role !== "STUDENT") {
     return (
-      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 20px" }}>
-        <h1 style={{ fontSize: "24px", marginBottom: "24px" }}>
-          Student Dashboard
-        </h1>
-        <p style={{ color: "#666", marginBottom: "24px", fontSize: "14px" }}>
-          You are logged in as a teacher. This page is only available to students.
-        </p>
-        <a
-          href="/teacher"
-          style={{
-            padding: "10px 24px",
-            background: "#1d4ed8",
-            color: "white",
-            borderRadius: "4px",
-            fontSize: "14px",
-            textDecoration: "none",
-          }}
-        >
-          Go to Teacher Dashboard
-        </a>
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Student Dashboard
+          </h1>
+          <p className="mt-2 text-sm text-slate-600">
+            You are currently logged in as a teacher.
+          </p>
+          <Link
+            href="/teacher"
+            className="mt-6 inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+          >
+            Go to Teacher Dashboard
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 20px" }}>
-      <h1 style={{ fontSize: "24px", marginBottom: "4px" }}>My Classes</h1>
-      <p style={{ color: "#666", marginBottom: "32px", fontSize: "14px" }}>
-        Welcome, {user.name}. Select a class to view your assignments.
-      </p>
-
-      {loading && (
-        <p style={{ color: "#666", fontSize: "14px" }}>Loading classes...</p>
-      )}
-
-      {!loading && classes.length === 0 && (
-        <p style={{ color: "#999", fontSize: "14px" }}>
-          No classes found. Make sure to seed the database first (go to home
-          page).
-        </p>
-      )}
-
-      {classes.length > 0 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: "16px",
-          }}
-        >
-          {classes.map((cls) => {
-            const progressPercent =
-              cls.progress.total > 0
-                ? Math.round(
-                    (cls.progress.submitted / cls.progress.total) * 100
-                  )
-                : 0;
-
-            return (
-              <a
-                key={cls.id}
-                href={`/student/class/${cls.id}`}
-                style={{
-                  display: "block",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "12px",
-                  padding: "24px",
-                  textDecoration: "none",
-                  color: "inherit",
-                  transition:
-                    "border-color 0.15s, box-shadow 0.15s, transform 0.15s",
-                  background: "white",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#1d4ed8";
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 12px rgba(29,78,216,0.1)";
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#e2e8f0";
-                  e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
-              >
-                {/* Class name */}
-                <h3
-                  style={{
-                    fontSize: "17px",
-                    margin: "0 0 6px 0",
-                    color: "#1d4ed8",
-                    fontWeight: 600,
-                  }}
-                >
-                  {cls.name}
-                </h3>
-
-                {/* Teacher */}
-                <p
-                  style={{
-                    fontSize: "13px",
-                    color: "#64748b",
-                    margin: "0 0 12px 0",
-                  }}
-                >
-                  {cls.teacher.name}
-                </p>
-
-                {/* Description (truncated) */}
-                <p
-                  style={{
-                    fontSize: "13px",
-                    color: "#94a3b8",
-                    margin: "0 0 16px 0",
-                    lineHeight: "1.4",
-                  }}
-                >
-                  {cls.description.length > 100
-                    ? cls.description.slice(0, 100) + "..."
-                    : cls.description}
-                </p>
-
-                {/* Progress bar */}
-                <div style={{ marginBottom: "10px" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontSize: "12px",
-                      color: "#64748b",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    <span>
-                      {cls.progress.submitted}/{cls.progress.total} completed
-                    </span>
-                    <span>{progressPercent}%</span>
-                  </div>
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "6px",
-                      background: "#f1f5f9",
-                      borderRadius: "3px",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${progressPercent}%`,
-                        height: "100%",
-                        background:
-                          progressPercent === 100 ? "#22c55e" : "#3b82f6",
-                        borderRadius: "3px",
-                        transition: "width 0.3s ease",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Stats row */}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "12px",
-                    fontSize: "12px",
-                    color: "#94a3b8",
-                  }}
-                >
-                  <span>{cls.assignmentCount} assignments</span>
-                  <span>{cls.studentCount} students</span>
-                </div>
-              </a>
-            );
-          })}
+    <div className={`${manrope.className} min-h-[calc(100vh-80px)] bg-[#f1f3f4]`}>
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto w-full max-w-6xl px-4 py-3 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl rounded-full bg-[#f1f3f4] px-4 py-2 text-sm text-slate-500">
+            Search assignments
+          </div>
         </div>
-      )}
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-5">
+            <h2 className="text-sm font-medium text-slate-700">Assignments</h2>
+            <div className="flex items-center gap-2">
+              <label htmlFor="assignment-sort" className="text-[11px] text-slate-500">
+                Sort
+              </label>
+              <select
+                id="assignment-sort"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 outline-none transition focus:border-slate-400"
+              >
+                <option value="due-asc">Due date (earliest first)</option>
+                <option value="due-desc">Due date (latest first)</option>
+                <option value="title-asc">Title (A-Z)</option>
+                <option value="title-desc">Title (Z-A)</option>
+              </select>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
+                {allAssignments.length} total
+              </span>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="px-5 py-8 text-sm text-slate-500">Loading assignments...</div>
+          ) : allAssignments.length === 0 ? (
+            <div className="px-5 py-10">
+              <p className="text-sm text-slate-600">
+                No assignments yet. Your teacher will add them here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {allAssignments.map((assignment) => {
+                const statusMeta = getStatusMeta(assignment.status);
+                const overdue = isOverdue(assignment.dueDate);
+                const dueSoon = isDueSoon(assignment.dueDate);
+                const completed = isCompleted(assignment.status);
+                const urgencyLabel = !assignment.dueDate
+                  ? "No due date"
+                  : completed
+                    ? "Completed"
+                    : overdue
+                      ? "Overdue"
+                      : dueSoon
+                        ? "Due soon"
+                        : "On track";
+                const urgencyTone = !assignment.dueDate
+                  ? "bg-slate-100 text-slate-600"
+                  : completed
+                    ? "bg-slate-100 text-slate-600"
+                    : overdue
+                      ? "bg-red-50 text-red-700"
+                      : dueSoon
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-emerald-50 text-emerald-700";
+
+                return (
+                  <article
+                    key={assignment.id}
+                    className="overflow-hidden rounded-lg border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
+                  >
+                    <div className="aspect-[4/3] border-b border-slate-200 bg-[#f8f9fa] px-3 py-2.5">
+                      <p className="line-clamp-2 text-xs font-medium text-slate-800">
+                        {assignment.title}
+                      </p>
+                      <p className="mt-1 truncate text-[11px] text-slate-500">
+                        {assignment.className}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 px-3 py-2.5">
+                      <p className="text-[11px] text-slate-500">
+                        Due {formatDueDate(assignment.dueDate)}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusMeta.tone}`}
+                        >
+                          {statusMeta.label}
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${urgencyTone}`}
+                        >
+                          {urgencyLabel}
+                        </span>
+                      </div>
+
+                      <Link
+                        href={`/student/class/${assignment.classId}/write/${assignment.id}`}
+                        className="inline-flex items-center rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] font-medium text-white transition hover:bg-slate-800"
+                      >
+                        {statusMeta.action}
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
