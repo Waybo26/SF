@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { hashPassword } from "@/lib/password";
 
 // POST /api/seed - Reset database and create fresh seed data
 export async function POST() {
@@ -14,12 +15,14 @@ export async function POST() {
 
     // ===== CREATE TEACHERS =====
     // All test accounts use password: "password123"
+    const hashedPassword = await hashPassword("password123");
+
     const teachers = await Promise.all([
       prisma.user.create({
         data: {
           name: "Ms. Johnson",
           email: "johnson@school.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "TEACHER",
         },
       }),
@@ -27,7 +30,7 @@ export async function POST() {
         data: {
           name: "Mr. Garcia",
           email: "garcia@school.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "TEACHER",
         },
       }),
@@ -35,7 +38,7 @@ export async function POST() {
         data: {
           name: "Dr. Patel",
           email: "patel@school.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "TEACHER",
         },
       }),
@@ -49,7 +52,7 @@ export async function POST() {
         data: {
           name: "Alex Smith",
           email: "alex.smith@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),
@@ -57,7 +60,7 @@ export async function POST() {
         data: {
           name: "Jordan Lee",
           email: "jordan.lee@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),
@@ -65,7 +68,7 @@ export async function POST() {
         data: {
           name: "Samira Khan",
           email: "samira.khan@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),
@@ -73,7 +76,7 @@ export async function POST() {
         data: {
           name: "Marcus Brown",
           email: "marcus.brown@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),
@@ -81,7 +84,7 @@ export async function POST() {
         data: {
           name: "Emily Chen",
           email: "emily.chen@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),
@@ -89,7 +92,7 @@ export async function POST() {
         data: {
           name: "David Wilson",
           email: "david.wilson@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),
@@ -97,7 +100,7 @@ export async function POST() {
         data: {
           name: "Olivia Martinez",
           email: "olivia.martinez@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),
@@ -105,7 +108,7 @@ export async function POST() {
         data: {
           name: "Liam O'Brien",
           email: "liam.obrien@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),
@@ -113,7 +116,7 @@ export async function POST() {
         data: {
           name: "Aisha Patel",
           email: "aisha.patel@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),
@@ -121,7 +124,7 @@ export async function POST() {
         data: {
           name: "Noah Kim",
           email: "noah.kim@student.edu",
-          password: "password123",
+          password: hashedPassword,
           role: "STUDENT",
         },
       }),

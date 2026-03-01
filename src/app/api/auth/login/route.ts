@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { setSession } from "@/lib/session";
+import { verifyPassword } from "@/lib/password";
 
 // POST /api/auth/login
 // Body: { email: string, password: string }
@@ -28,8 +29,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check password (plain-text comparison for MVP -- hash in production)
-    if (user.password !== password) {
+    // Verify password against stored hash
+    const passwordValid = await verifyPassword(password, user.password);
+    if (!passwordValid) {
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }
