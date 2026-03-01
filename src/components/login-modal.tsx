@@ -13,7 +13,6 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const { login } = useAuth();
   const router = useRouter();
 
-  const [role, setRole] = useState<"student" | "teacher">("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -26,7 +25,6 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
       setPassword("");
       setError("");
       setSubmitting(false);
-      setRole("student");
     }
   }, [isOpen]);
 
@@ -66,15 +64,11 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         return;
       }
 
-      // Redirect based on role
+      // Redirect based on the user's actual role from the server
       onClose();
-      if (role === "teacher") {
-        router.push("/teacher");
-      } else {
-        router.push("/editor");
-      }
+      router.push(result.user?.role === "TEACHER" ? "/teacher" : "/student");
     },
-    [email, password, role, login, onClose, router]
+    [email, password, login, onClose, router]
   );
 
   if (!isOpen) return null;
@@ -111,64 +105,26 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             color: "#e6eef7",
           }}
         >
-          {/* Role toggle */}
-          <div
-            role="tablist"
-            aria-label="Account type"
-            style={{
-              display: "inline-flex",
-              gap: "8px",
-              marginBottom: "14px",
-              background: "transparent",
-              borderRadius: "999px",
-              alignItems: "center",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setRole("student")}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "999px",
-                border: `1px solid ${role === "student" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)"}`,
-                background: role === "student" ? "rgba(255,255,255,0.06)" : "transparent",
-                color: role === "student" ? "#ffffff" : "#9aa4b2",
-                fontSize: "13px",
-                cursor: "pointer",
-                transition: "background-color .12s ease, color .12s ease, transform .12s ease",
-              }}
-            >
-              Student
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("teacher")}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "999px",
-                border: `1px solid ${role === "teacher" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)"}`,
-                background: role === "teacher" ? "rgba(255,255,255,0.06)" : "transparent",
-                color: role === "teacher" ? "#ffffff" : "#9aa4b2",
-                fontSize: "13px",
-                cursor: "pointer",
-                transition: "background-color .12s ease, color .12s ease, transform .12s ease",
-              }}
-            >
-              Teacher
-            </button>
-          </div>
-
           {/* Heading */}
           <h1
             style={{
-              margin: "0 0 18px 0",
+              margin: "0 0 6px 0",
               fontSize: "20px",
               letterSpacing: "0.2px",
               color: "#e6eef7",
             }}
           >
-            Sign in as {role === "teacher" ? "Teacher" : "Student"}
+            Welcome back
           </h1>
+          <p
+            style={{
+              margin: "0 0 18px 0",
+              fontSize: "13px",
+              color: "#9aa4b2",
+            }}
+          >
+            Sign in with your school account
+          </p>
 
           {/* Form */}
           <form onSubmit={handleSubmit} noValidate>
@@ -325,9 +281,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 }
               }}
             >
-              {submitting
-                ? "Signing in\u2026"
-                : `Sign in as ${role === "teacher" ? "Teacher" : "Student"}`}
+              {submitting ? "Signing in\u2026" : "Sign in"}
             </button>
           </form>
 
