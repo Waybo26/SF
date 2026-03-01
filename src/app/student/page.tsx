@@ -67,12 +67,23 @@ const STATUS_META: Record<
   },
 };
 
+const STATUS_CARD_TONE: Record<string, string> = {
+  NOT_STARTED: "border-slate-300 bg-slate-50/80",
+  IN_PROGRESS: "border-blue-300 bg-blue-50/80",
+  SUBMITTED: "border-emerald-300 bg-emerald-50/80",
+  GRADED: "border-violet-300 bg-violet-50/80",
+};
+
 function isCompleted(status: string) {
   return status === "SUBMITTED" || status === "GRADED";
 }
 
 function getStatusMeta(status: string) {
   return STATUS_META[status] ?? STATUS_META.NOT_STARTED;
+}
+
+function getCardTone(status: string) {
+  return STATUS_CARD_TONE[status] ?? STATUS_CARD_TONE.NOT_STARTED;
 }
 
 function parseDueDate(dueDate: string | null) {
@@ -316,6 +327,7 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {allAssignments.map((assignment) => {
                 const statusMeta = getStatusMeta(assignment.status);
+                const cardTone = getCardTone(assignment.status);
                 const overdue = isOverdue(assignment.dueDate);
                 const dueSoon = isDueSoon(assignment.dueDate);
                 const completed = isCompleted(assignment.status);
@@ -341,18 +353,18 @@ export default function StudentDashboard() {
                 return (
                   <article
                     key={assignment.id}
-                    className="overflow-hidden rounded-lg border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
+                    className={`overflow-hidden rounded-lg border ${cardTone} transition hover:-translate-y-0.5 hover:shadow-sm`}
                   >
-                    <div className="aspect-[4/3] border-b border-slate-200 bg-[#f8f9fa] px-3 py-2.5">
+                    <div className="border-b border-black/5 px-3 py-2">
                       <p className="line-clamp-2 text-xs font-medium text-slate-800">
                         {assignment.title}
                       </p>
-                      <p className="mt-1 truncate text-[11px] text-slate-500">
+                      <p className="mt-0.5 truncate text-[11px] text-slate-500">
                         {assignment.className}
                       </p>
                     </div>
 
-                    <div className="space-y-2 px-3 py-2.5">
+                    <div className="space-y-1.5 px-3 py-2">
                       <p className="text-[11px] text-slate-500">
                         Due {formatDueDate(assignment.dueDate)}
                       </p>

@@ -11,52 +11,26 @@ interface SFViewerProps {
   sfContent?: string; // Pre-loaded .sf JSON content
 }
 
+const PAGE_WIDTH_PX = 816; // 8.5in @ 96dpi
+const PAGE_CONTENT_HEIGHT_PX = 864; // 9in writable area
+const PAGE_MARGIN_TOP_PX = 96; // 1in top margin
+const PAGE_MARGIN_SIDE_PX = 96; // 1in left/right margin
+
+function getPageCount(contentHeight: number): number {
+  return Math.max(1, Math.ceil(Math.max(contentHeight, 1) / PAGE_CONTENT_HEIGHT_PX));
+}
+
 export default function SFViewer({ sfContent }: SFViewerProps) {
   const [sfFile, setSfFile] = useState<SFFile | null>(null);
   const [engine, setEngine] = useState<SFPlaybackEngine | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(10);
+  const [playbackSpeed, setPlaybackSpeed] = useState(10); // 10x speed
   const [error, setError] = useState<string | null>(null);
   const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
-  const [statsOpen, setStatsOpen] = useState(false);
-  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
-  const [snapshotSortAsc, setSnapshotSortAsc] = useState(true);
+  const [pageCount, setPageCount] = useState(1);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // ── Page pagination ──────────────────────────────────────────────
-  const PAGE_HEIGHT_PX = 11 * 96; // 1056px — full page including margins
-  const PAGE_CONTENT_PX = 9 * 96; // 864px — content area per page (11in - 2in margins)
-  const PAGE_GAP_PX = 20; // gap between visual pages
-  const [numPages, setNumPages] = useState(1);
-  const viewerContentRef = useRef<HTMLDivElement>(null);
-
-  // Watch the hidden measuring div and recalculate page count
-  useEffect(() => {
-    const el = viewerContentRef.current;
-    if (!el) return;
-
-    const PADDING_PX = 2 * 96; // 1in top + 1in bottom padding in measuring div
-
-    const recalc = () => {
-      const contentH = Math.max(0, el.scrollHeight - PADDING_PX);
-      const pages = Math.max(1, Math.ceil(contentH / PAGE_CONTENT_PX));
-      setNumPages(pages);
-    };
-
-    recalc();
-
-    const ro = new ResizeObserver(recalc);
-    ro.observe(el);
-
-    const mo = new MutationObserver(recalc);
-    mo.observe(el, { childList: true, subtree: true, characterData: true });
-
-    return () => {
-      ro.disconnect();
-      mo.disconnect();
-    };
-  }, [PAGE_CONTENT_PX]);
 
   // Load .sf content
   const loadContent = useCallback((json: string) => {
@@ -98,7 +72,7 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
 
     playIntervalRef.current = setInterval(() => {
       setCurrentTime((prev) => {
-        const next = prev + 100 * playbackSpeed;
+        const next = prev + 100 * playbackSpeed; // Advance by 100ms * speed
         if (next >= engine.getEndTime()) {
           setIsPlaying(false);
           return engine.getEndTime();
@@ -142,6 +116,21 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
   const stats = engine ? engine.getStats() : null;
   const snapshots = engine ? engine.getSnapshots() : [];
 
+  useEffect(() => {
+    const updatePageGuides = () => {
+      const el = contentRef.current;
+      if (!el) {
+        setPageCount(1);
+        return;
+      }
+      setPageCount(getPageCount(el.scrollHeight));
+    };
+
+    updatePageGuides();
+    window.addEventListener("resize", updatePageGuides);
+    return () => window.removeEventListener("resize", updatePageGuides);
+  }, [currentContent]);
+
   // Format duration
   const formatDuration = (ms: number) => {
     const totalSeconds = Math.round(ms / 1000);
@@ -152,7 +141,7 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
     return `${m}m ${s}s`;
   };
 
-  // No file loaded — show upload
+  // No file loaded - show upload
   if (!sfFile || !engine) {
     return (
       <div style={{ maxWidth: "600px", margin: "0 auto", padding: "40px 20px" }}>
@@ -196,531 +185,350 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: "1600px",
-        margin: "0 auto",
-        padding: "12px 20px",
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        overflow: "hidden",
-      }}
-    >
-      {/* ── Sticky Header: metadata + controls + timeline ─────── */}
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
+      {/* Header */}
       <div
         style={{
-          flexShrink: 0,
-          borderBottom: "1px solid #e5e7eb",
-          paddingBottom: "8px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "16px",
         }}
       >
-        {/* Header row */}
-        <div
+        <h2 style={{ margin: 0 }}>SF File Viewer</h2>
+        <label
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "4px",
+            padding: "6px 12px",
+            background: "#f5f5f5",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "13px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <h2 style={{ margin: 0, fontSize: "16px" }}>SF Viewer</h2>
-            <span style={{ fontSize: "12px", color: "#888" }}>
-              {sfFile.metadata.studentId} &middot;{" "}
-              {sfFile.metadata.assignmentId}
-            </span>
-            {sfFile.metadata.submittedAt && (
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: "#188038",
-                  fontWeight: 600,
-                  background: "#dcfce7",
-                  padding: "1px 6px",
-                  borderRadius: "3px",
-                }}
-              >
-                SUBMITTED
-              </span>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <button
-              onClick={() => setStatsOpen(!statsOpen)}
-              style={{
-                padding: "4px 10px",
-                background: statsOpen ? "#e0e7ff" : "#f5f5f5",
-                border: `1px solid ${statsOpen ? "#818cf8" : "#ccc"}`,
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "12px",
-                color: statsOpen ? "#4338ca" : "#333",
-                fontWeight: statsOpen ? 600 : 400,
-              }}
-            >
-              Stats {statsOpen ? "\u25B2" : "\u25BC"}
-            </button>
-            {snapshots.length > 0 && (
-              <button
-                onClick={() => setSnapshotsOpen(!snapshotsOpen)}
-                style={{
-                  padding: "4px 10px",
-                  background: snapshotsOpen ? "#fef3c7" : "#f5f5f5",
-                  border: `1px solid ${snapshotsOpen ? "#f59e0b" : "#ccc"}`,
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  color: snapshotsOpen ? "#92400e" : "#333",
-                  fontWeight: snapshotsOpen ? 600 : 400,
-                }}
-              >
-                Snapshots ({snapshots.length}) {snapshotsOpen ? "\u25B2" : "\u25BC"}
-              </button>
-            )}
-            <label
-              style={{
-                padding: "4px 10px",
-                background: "#f5f5f5",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "12px",
-              }}
-            >
-              Load file
-              <input
-                type="file"
-                accept=".sf,.json"
-                onChange={handleFileUpload}
-                style={{ display: "none" }}
-              />
-            </label>
-          </div>
-        </div>
+          Load another file
+          <input
+            type="file"
+            accept=".sf,.json"
+            onChange={handleFileUpload}
+            style={{ display: "none" }}
+          />
+        </label>
+      </div>
 
-        {/* Collapsible Stats Panel */}
-        {statsOpen && stats && (
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              marginBottom: "6px",
-              flexWrap: "wrap",
-            }}
-          >
-            {[
-              { label: "Duration", value: formatDuration(stats.totalDuration) },
-              { label: "Events", value: stats.eventCount },
-              { label: "Keys", value: stats.keystrokeCount },
-              { label: "Backspaces", value: stats.backspaceCount },
-              {
-                label: "Pastes",
-                value: stats.pasteCount,
-                warn: stats.pasteCount > 5,
-              },
-              {
-                label: "Pasted Chars",
-                value: stats.totalPastedChars,
-                warn: stats.totalPastedChars > 500,
-              },
-              {
-                label: "Tab Switches",
-                value: stats.tabAwayCount,
-                warn: stats.tabAwayCount > 5,
-              },
-              {
-                label: "Time Away",
-                value: formatDuration(stats.totalTabAwayMs),
-                warn: stats.totalTabAwayMs > 300000,
-              },
-              { label: "Snapshots", value: stats.snapshotCount },
-              { label: "Cuts", value: stats.cutCount },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                style={{
-                  padding: "6px 10px",
-                  background: stat.warn ? "#fef2f2" : "#f9fafb",
-                  border: `1px solid ${stat.warn ? "#fecaca" : "#e5e7eb"}`,
-                  borderRadius: "4px",
-                  minWidth: "80px",
-                }}
-              >
-                <div style={{ fontSize: "10px", color: "#9ca3af" }}>
-                  {stat.label}
-                </div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: stat.warn ? "#dc2626" : "#111",
-                  }}
-                >
-                  {stat.value}
-                </div>
-              </div>
-            ))}
-           </div>
-        )}
-
-        {/* Collapsible Snapshot Panel */}
-        {snapshotsOpen && snapshots.length > 0 && (
-          <div
-            style={{
-              marginBottom: "6px",
-              border: "1px solid #e5e7eb",
-              borderRadius: "4px",
-              overflow: "hidden",
-            }}
-          >
+      {/* Stats Panel */}
+      {stats && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: "12px",
+            marginBottom: "16px",
+          }}
+        >
+          {[
+            {
+              label: "Duration",
+              value: formatDuration(stats.totalDuration),
+            },
+            { label: "Total Events", value: stats.eventCount },
+            { label: "Keystrokes", value: stats.keystrokeCount },
+            { label: "Backspaces", value: stats.backspaceCount },
+            {
+              label: "Pastes",
+              value: stats.pasteCount,
+              highlight: stats.pasteCount > 5,
+            },
+            {
+              label: "Pasted Chars",
+              value: stats.totalPastedChars,
+              highlight: stats.totalPastedChars > 500,
+            },
+            {
+              label: "Tab Switches",
+              value: stats.tabAwayCount,
+              highlight: stats.tabAwayCount > 5,
+            },
+            {
+              label: "Time Away",
+              value: formatDuration(stats.totalTabAwayMs),
+              highlight: stats.totalTabAwayMs > 300000,
+            },
+            { label: "Snapshots", value: stats.snapshotCount },
+            { label: "Cuts", value: stats.cutCount },
+          ].map((stat) => (
             <div
+              key={stat.label}
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "4px 8px",
-                background: "#fefce8",
-                borderBottom: "1px solid #e5e7eb",
+                padding: "12px",
+                background: stat.highlight ? "#fef2f2" : "#f9f9f9",
+                border: `1px solid ${stat.highlight ? "#fecaca" : "#eee"}`,
+                borderRadius: "4px",
               }}
             >
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "#92400e" }}>
-                Snapshots
-              </span>
-              <button
-                onClick={() => setSnapshotSortAsc(!snapshotSortAsc)}
+              <div
+                style={{ fontSize: "11px", color: "#999", marginBottom: "4px" }}
+              >
+                {stat.label}
+              </div>
+              <div
                 style={{
-                  padding: "2px 6px",
-                  background: "transparent",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "3px",
-                  cursor: "pointer",
-                  fontSize: "10px",
-                  color: "#666",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  color: stat.highlight ? "#dc2626" : "#333",
                 }}
               >
-                Sort: {snapshotSortAsc ? "Oldest first" : "Newest first"}
-              </button>
+                {stat.value}
+              </div>
             </div>
-            <div style={{ maxHeight: "140px", overflowY: "auto" }}>
-              {[...snapshots]
-                .sort((a, b) =>
-                  snapshotSortAsc
-                    ? a.timestamp - b.timestamp
-                    : b.timestamp - a.timestamp
-                )
-                .map((snapshot) => {
-                  const isAuto = snapshot.label.toLowerCase().startsWith("auto");
-                  const date = new Date(snapshot.timestamp);
-                  return (
-                    <div
-                      key={snapshot.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "4px 8px",
-                        borderBottom: "1px solid #f3f4f6",
-                        background:
-                          selectedSnapshot === snapshot.id
-                            ? "#eff6ff"
-                            : "white",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "9px",
-                          padding: "1px 4px",
-                          borderRadius: "2px",
-                          background: isAuto ? "#f3f4f6" : "#dbeafe",
-                          color: isAuto ? "#6b7280" : "#1e40af",
-                          fontWeight: 500,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {isAuto ? "AUTO" : "MANUAL"}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 500,
-                          color: "#111",
-                          flex: 1,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {snapshot.label}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "10px",
-                          color: "#9ca3af",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {date.toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}{" "}
-                        {date.toLocaleTimeString(undefined, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                      <button
-                        onClick={() => jumpToSnapshot(snapshot.id)}
-                        style={{
-                          padding: "2px 8px",
-                          background:
-                            selectedSnapshot === snapshot.id
-                              ? "#3b82f6"
-                              : "#f5f5f5",
-                          color:
-                            selectedSnapshot === snapshot.id
-                              ? "white"
-                              : "#555",
-                          border: `1px solid ${selectedSnapshot === snapshot.id ? "#3b82f6" : "#ccc"}`,
-                          borderRadius: "3px",
-                          cursor: "pointer",
-                          fontSize: "11px",
-                          fontWeight: 500,
-                          flexShrink: 0,
-                        }}
-                      >
-                        Jump
-                      </button>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
+          ))}
+        </div>
+      )}
+
+      {/* Metadata */}
+      <div
+        style={{
+          fontSize: "12px",
+          color: "#888",
+          marginBottom: "12px",
+          display: "flex",
+          gap: "16px",
+          flexWrap: "wrap",
+        }}
+      >
+        <span>Student: {sfFile.metadata.studentId}</span>
+        <span>Assignment: {sfFile.metadata.assignmentId}</span>
+        <span>Created: {new Date(sfFile.metadata.createdAt).toLocaleString()}</span>
+        {sfFile.metadata.submittedAt && (
+          <span>
+            Submitted: {new Date(sfFile.metadata.submittedAt).toLocaleString()}
+          </span>
         )}
+      </div>
 
-        {/* Timeline */}
-        <Timeline
-          startTime={engine.getStartTime()}
-          endTime={engine.getEndTime()}
-          currentTime={currentTime}
-          markers={markers}
-          onSeek={handleSeek}
-        />
+      {/* Timeline */}
+      <Timeline
+        startTime={engine.getStartTime()}
+        endTime={engine.getEndTime()}
+        currentTime={currentTime}
+        markers={markers}
+        onSeek={handleSeek}
+      />
 
-        {/* Playback Controls */}
-        <div
+      {/* Playback Controls */}
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          alignItems: "center",
+          padding: "8px 0",
+          flexWrap: "wrap",
+        }}
+      >
+        <button
+          onClick={handlePlayPause}
           style={{
-            display: "flex",
-            gap: "6px",
-            alignItems: "center",
-            flexWrap: "wrap",
-            marginTop: "2px",
+            padding: "6px 16px",
+            background: isPlaying ? "#f97316" : "#22c55e",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontWeight: "bold",
           }}
         >
-          <button
-            onClick={handlePlayPause}
-            style={{
-              padding: "4px 14px",
-              background: isPlaying ? "#f97316" : "#22c55e",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "12px",
-            }}
-          >
-            {isPlaying ? "Pause" : "Play"}
-          </button>
+          {isPlaying ? "Pause" : "Play"}
+        </button>
 
+        <button
+          onClick={() => setCurrentTime(engine.getStartTime())}
+          style={{
+            padding: "6px 12px",
+            background: "#f5f5f5",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            cursor: "pointer",
+          }}
+        >
+          Reset
+        </button>
+
+        <span style={{ fontSize: "13px", color: "#666" }}>Speed:</span>
+        {[1, 5, 10, 50, 100].map((speed) => (
           <button
-            onClick={() => setCurrentTime(engine.getStartTime())}
+            key={speed}
+            onClick={() => setPlaybackSpeed(speed)}
             style={{
-              padding: "4px 10px",
-              background: "#f5f5f5",
+              padding: "4px 8px",
+              background: playbackSpeed === speed ? "#1d4ed8" : "#f5f5f5",
+              color: playbackSpeed === speed ? "white" : "#333",
               border: "1px solid #ccc",
               borderRadius: "4px",
               cursor: "pointer",
               fontSize: "12px",
             }}
           >
-            Reset
+            {speed}x
           </button>
-
-          <span style={{ fontSize: "12px", color: "#888", marginLeft: "4px" }}>
-            Speed:
-          </span>
-          {[1, 5, 10, 50, 100].map((speed) => (
-            <button
-              key={speed}
-              onClick={() => setPlaybackSpeed(speed)}
-              style={{
-                padding: "3px 7px",
-                background: playbackSpeed === speed ? "#1d4ed8" : "#f5f5f5",
-                color: playbackSpeed === speed ? "white" : "#555",
-                border: `1px solid ${playbackSpeed === speed ? "#1d4ed8" : "#ccc"}`,
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "11px",
-                fontWeight: playbackSpeed === speed ? 600 : 400,
-              }}
-            >
-              {speed}x
-            </button>
-          ))}
-        </div>
+        ))}
       </div>
 
-      {/* ── Main content: 70% document / 30% event log ──────── */}
+      {/* Snapshots Navigation */}
+      {snapshots.length > 0 && (
+        <div style={{ padding: "8px 0" }}>
+          <div
+            style={{
+              fontSize: "13px",
+              fontWeight: "bold",
+              marginBottom: "6px",
+            }}
+          >
+            Snapshots (Student-marked drafts):
+          </div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {snapshots.map((snapshot) => (
+              <button
+                key={snapshot.id}
+                onClick={() => jumpToSnapshot(snapshot.id)}
+                style={{
+                  padding: "4px 12px",
+                  background:
+                    selectedSnapshot === snapshot.id ? "#3b82f6" : "#f5f5f5",
+                  color: selectedSnapshot === snapshot.id ? "white" : "#333",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                }}
+              >
+                {snapshot.label} (
+                {new Date(snapshot.timestamp).toLocaleTimeString()})
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Main content area: Document preview + Event log */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "7fr 3fr",
-          gap: "12px",
-          flex: 1,
-          minHeight: 0, // Allow children to shrink below content size
-          marginTop: "10px",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "16px",
+          marginTop: "16px",
         }}
       >
         {/* Document Preview */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-          }}
-        >
+        <div>
           <div
             style={{
-              fontSize: "12px",
-              fontWeight: 600,
-              color: "#6b7280",
-              marginBottom: "6px",
-              flexShrink: 0,
+              fontWeight: "bold",
+              fontSize: "13px",
+              marginBottom: "8px",
             }}
           >
-            Document Preview
+            Document at current position:
           </div>
           <div
-              style={{
-                background: "#e8eaed",
-                borderRadius: "6px",
-                border: "1px solid #e5e7eb",
-                flex: 1,
-                overflowY: "auto",
-                padding: "20px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: `${PAGE_GAP_PX}px`,
-              }}
-            >
-            {/* Hidden measuring div — off-screen, used to calculate content height */}
-            <div
-              ref={viewerContentRef}
-              className="sf-viewer-page"
-              style={{
-                position: "absolute",
-                left: "-9999px",
-                top: 0,
-                width: "8.5in",
-                padding: "1in",
-                fontSize: "12pt",
-                lineHeight: "1.5",
-                fontFamily: '"Times New Roman", Times, serif',
-                color: "#000",
-                boxSizing: "border-box",
-                visibility: "hidden",
-              }}
-              dangerouslySetInnerHTML={{ __html: currentContent }}
-            />
-
-            {/* Discrete clipped pages */}
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: "6px",
+              padding: "24px 12px",
+              minHeight: "300px",
+              background: "#eef1f5",
+              overflowX: "auto",
+            }}
+          >
             {currentContent ? (
-              Array.from({ length: numPages }, (_, i) => (
-                <div
-                  key={`page-${i}`}
-                  className="sf-viewer-page"
-                  style={{
-                    width: "8.5in",
-                    height: `${PAGE_HEIGHT_PX}px`,
-                    background: "white",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
-                    borderRadius: "2px",
-                    overflow: "hidden",
-                    flexShrink: 0,
-                    position: "relative",
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      padding: "1in",
-                      fontSize: "12pt",
-                      lineHeight: "1.5",
-                      fontFamily: '"Times New Roman", Times, serif',
-                      color: "#000",
-                      boxSizing: "border-box",
-                      transform: `translateY(-${i * PAGE_CONTENT_PX}px)`,
-                    }}
-                    dangerouslySetInnerHTML={{ __html: currentContent }}
-                  />
-                </div>
-              ))
-            ) : (
               <div
                 style={{
-                  width: "8.5in",
-                  height: `${PAGE_HEIGHT_PX}px`,
-                  background: "white",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
-                  borderRadius: "2px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
+                  position: "relative",
+                  width: `${PAGE_WIDTH_PX}px`,
+                  margin: "0 auto",
                 }}
               >
-                <div style={{ color: "#999", fontStyle: "italic" }}>
-                  No content at this position. Move the timeline to see the
-                  document.
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    pointerEvents: "none",
+                    zIndex: 3,
+                  }}
+                >
+                  {Array.from({ length: Math.max(0, pageCount - 1) }).map((_, i) => {
+                    const y = PAGE_MARGIN_TOP_PX + (i + 1) * PAGE_CONTENT_HEIGHT_PX;
+                    return (
+                      <div key={y} style={{ position: "absolute", top: `${y}px`, left: 0, right: 0 }}>
+                        <div
+                          style={{
+                            borderTop: "2px dashed #cbd5e1",
+                            margin: "0 22px",
+                          }}
+                        />
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: "-9px",
+                            left: "-72px",
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            color: "#64748b",
+                            background: "#eef1f5",
+                            padding: "2px 6px",
+                            borderRadius: "999px",
+                          }}
+                        >
+                          Page {i + 2}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
+
+                <div
+                  className="sf-viewer-page"
+                  style={{
+                    position: "relative",
+                    zIndex: 2,
+                    minHeight: `${PAGE_MARGIN_TOP_PX * 2 + PAGE_CONTENT_HEIGHT_PX}px`,
+                    background: "white",
+                    border: "1px solid #d1d5db",
+                    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.08)",
+                    padding: `${PAGE_MARGIN_TOP_PX}px ${PAGE_MARGIN_SIDE_PX}px`,
+                    fontSize: "12pt",
+                    lineHeight: "1.5",
+                    fontFamily: '"Times New Roman", Times, serif',
+                    color: "#000",
+                  }}
+                  ref={contentRef}
+                  dangerouslySetInnerHTML={{ __html: currentContent }}
+                />
+              </div>
+            ) : (
+              <div style={{ color: "#999", fontStyle: "italic" }}>
+                No content at this position. Move the timeline to a snapshot to
+                see document content.
               </div>
             )}
           </div>
         </div>
 
         {/* Event Log */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-          }}
-        >
+        <div>
           <div
             style={{
-              fontSize: "12px",
-              fontWeight: 600,
-              color: "#6b7280",
-              marginBottom: "6px",
-              flexShrink: 0,
+              fontWeight: "bold",
+              fontSize: "13px",
+              marginBottom: "8px",
             }}
           >
-            Event Log
+            Events near current position:
           </div>
-          <div style={{ flex: 1, minHeight: 0 }}>
-            <EventLog
-              events={allEvents}
-              currentTime={currentTime}
-              startTime={engine.getStartTime()}
-            />
-          </div>
+          <EventLog
+            events={allEvents}
+            currentTime={currentTime}
+            startTime={engine.getStartTime()}
+          />
         </div>
       </div>
     </div>
