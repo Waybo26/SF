@@ -10,6 +10,7 @@ export default function Hero() {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const rafRef = useRef<number>(0);
   const [showLogin, setShowLogin] = useState(false);
+  const [seedStatus, setSeedStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const { user, isLoggedIn } = useAuth();
 
   const dashboardHref = user?.role === "TEACHER" ? "/teacher" : "/student";
@@ -123,6 +124,28 @@ export default function Hero() {
                 How It Works
               </Link>
             </div>
+
+            <button
+              onClick={async () => {
+                setSeedStatus("loading");
+                try {
+                  const res = await fetch("/api/seed", { method: "POST" });
+                  setSeedStatus(res.ok ? "done" : "error");
+                } catch {
+                  setSeedStatus("error");
+                }
+              }}
+              disabled={seedStatus === "loading"}
+              className="mt-4 text-sm text-gray-400 hover:text-brand-red transition-colors underline underline-offset-4 cursor-pointer disabled:cursor-wait"
+            >
+              {seedStatus === "loading"
+                ? "Seeding..."
+                : seedStatus === "done"
+                  ? "Database seeded!"
+                  : seedStatus === "error"
+                    ? "Seed failed — retry?"
+                    : "Seed Database"}
+            </button>
           </div>
         </div>
       </section>
