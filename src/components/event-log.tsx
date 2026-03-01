@@ -16,6 +16,8 @@ const EVENT_COLORS: Record<string, string> = {
   cut: "#a855f7",
   selection: "#6b7280",
   formatting: "#2563eb",
+  paragraph_format: "#0891b2",
+  node_change: "#7c3aed",
   tab_away: "#f97316",
   tab_return: "#22c55e",
   snapshot: "#3b82f6",
@@ -42,8 +44,20 @@ function formatEvent(event: SFEvent): string {
       return `Cut: "${event.content.substring(0, 80)}${event.content.length > 80 ? "..." : ""}"`;
     case "selection":
       return `Selected: pos ${event.from}-${event.to}`;
-    case "formatting":
-      return `Format: ${event.mark} (${event.from}-${event.to})`;
+    case "formatting": {
+      const attrStr = event.attrs
+        ? ` [${Object.entries(event.attrs).map(([k, v]) => `${k}: ${v}`).join(", ")}]`
+        : "";
+      return `Format: ${event.action} ${event.mark}${attrStr} (${event.from}-${event.to})`;
+    }
+    case "paragraph_format":
+      return `Block: ${event.attr} → ${event.value || "default"} (pos ${event.position})`;
+    case "node_change": {
+      const nodeAttrStr = event.attrs
+        ? ` [${Object.entries(event.attrs).map(([k, v]) => `${k}: ${v}`).join(", ")}]`
+        : "";
+      return `Node: ${event.fromNodeType} → ${event.toNodeType}${nodeAttrStr} (pos ${event.position})`;
+    }
     case "tab_away":
       return "Left tab";
     case "tab_return":
@@ -74,21 +88,25 @@ export default function EventLog({
   return (
     <div
       style={{
-        border: "1px solid #ddd",
-        borderRadius: "4px",
-        maxHeight: "400px",
+        border: "1px solid #e5e7eb",
+        borderRadius: "6px",
+        height: "100%",
         overflowY: "auto",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <div
         style={{
           padding: "8px 12px",
-          borderBottom: "1px solid #ddd",
-          background: "#f9f9f9",
-          fontWeight: "bold",
-          fontSize: "13px",
+          borderBottom: "1px solid #e5e7eb",
+          background: "#f9fafb",
+          fontWeight: 600,
+          fontSize: "12px",
           position: "sticky",
           top: 0,
+          zIndex: 1,
+          flexShrink: 0,
         }}
       >
         Event Log ({events.length} total, showing {displayEvents.length} nearby)
@@ -106,7 +124,7 @@ export default function EventLog({
           No events near current position
         </div>
       ) : (
-        <div>
+        <div style={{ flex: 1, overflowY: "auto" }}>
           {displayEvents.map((event, i) => {
             const isPast = event.timestamp <= currentTime;
             const isCurrent =
@@ -134,8 +152,10 @@ export default function EventLog({
                     color: EVENT_COLORS[event.type] ?? "#666",
                     fontWeight:
                       event.type === "paste" ||
+                      event.type === "cut" ||
                       event.type === "tab_away" ||
-                      event.type === "tab_return"
+                      event.type === "tab_return" ||
+                      event.type === "node_change"
                         ? "bold"
                         : "normal",
                   }}

@@ -14,6 +14,8 @@ export interface KeystrokeEvent {
 export interface BackspaceEvent {
   type: "backspace";
   position: number;
+  /** End of the deleted range. If present, deletion is [position, toPosition]. */
+  toPosition?: number;
   deletedContent: string;
   timestamp: number;
 }
@@ -21,6 +23,8 @@ export interface BackspaceEvent {
 export interface DeleteEvent {
   type: "delete";
   position: number;
+  /** End of the deleted range. If present, deletion is [position, toPosition]. */
+  toPosition?: number;
   deletedContent: string;
   timestamp: number;
 }
@@ -51,7 +55,8 @@ export interface SelectionEvent {
 export interface FormattingEvent {
   type: "formatting";
   action: "add" | "remove";
-  mark: string; // "bold", "italic", "underline", "heading", etc.
+  mark: string; // "bold", "italic", "underline", "textStyle", "highlight", etc.
+  attrs?: Record<string, unknown>; // mark attributes (e.g. { color: "#c0392b" } for textStyle)
   from: number;
   to: number;
   timestamp: number;
@@ -59,9 +64,22 @@ export interface FormattingEvent {
 
 export interface ParagraphFormatEvent {
   type: "paragraph_format";
-  attr: string; // "textAlign" | "lineHeight" | "indent"
+  attr: string; // "textAlign" | "lineHeight" | "indent" | "textIndent"
   value: string | number;
   position: number; // position of the node in the document
+  timestamp: number;
+}
+
+/**
+ * Logged when a block node's type changes (e.g. paragraph → heading,
+ * paragraph → bulletList item, heading → paragraph, etc.)
+ */
+export interface NodeChangeEvent {
+  type: "node_change";
+  fromNodeType: string; // original node type name (e.g. "paragraph")
+  toNodeType: string; // new node type name (e.g. "heading")
+  attrs?: Record<string, unknown>; // new node attrs (e.g. { level: 2 })
+  position: number;
   timestamp: number;
 }
 
@@ -92,6 +110,7 @@ export type SFEvent =
   | SelectionEvent
   | FormattingEvent
   | ParagraphFormatEvent
+  | NodeChangeEvent
   | TabAwayEvent
   | TabReturnEvent
   | SnapshotEvent;

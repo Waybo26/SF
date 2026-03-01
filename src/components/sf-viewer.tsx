@@ -16,9 +16,10 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
   const [engine, setEngine] = useState<SFPlaybackEngine | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(10); // 10x speed
+  const [playbackSpeed, setPlaybackSpeed] = useState(10);
   const [error, setError] = useState<string | null>(null);
   const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load .sf content
@@ -61,7 +62,7 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
 
     playIntervalRef.current = setInterval(() => {
       setCurrentTime((prev) => {
-        const next = prev + 100 * playbackSpeed; // Advance by 100ms * speed
+        const next = prev + 100 * playbackSpeed;
         if (next >= engine.getEndTime()) {
           setIsPlaying(false);
           return engine.getEndTime();
@@ -115,7 +116,7 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
     return `${m}m ${s}s`;
   };
 
-  // No file loaded - show upload
+  // No file loaded — show upload
   if (!sfFile || !engine) {
     return (
       <div style={{ maxWidth: "600px", margin: "0 auto", padding: "40px 20px" }}>
@@ -159,286 +160,354 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
   }
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
-      {/* Header */}
+    <div
+      style={{
+        maxWidth: "1400px",
+        margin: "0 auto",
+        padding: "12px 20px",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
+      {/* ── Sticky Header: metadata + controls + timeline ─────── */}
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "16px",
+          flexShrink: 0,
+          borderBottom: "1px solid #e5e7eb",
+          paddingBottom: "8px",
         }}
       >
-        <h2 style={{ margin: 0 }}>SF File Viewer</h2>
-        <label
-          style={{
-            padding: "6px 12px",
-            background: "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "13px",
-          }}
-        >
-          Load another file
-          <input
-            type="file"
-            accept=".sf,.json"
-            onChange={handleFileUpload}
-            style={{ display: "none" }}
-          />
-        </label>
-      </div>
-
-      {/* Stats Panel */}
-      {stats && (
+        {/* Header row */}
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: "12px",
-            marginBottom: "16px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "4px",
           }}
         >
-          {[
-            {
-              label: "Duration",
-              value: formatDuration(stats.totalDuration),
-            },
-            { label: "Total Events", value: stats.eventCount },
-            { label: "Keystrokes", value: stats.keystrokeCount },
-            { label: "Backspaces", value: stats.backspaceCount },
-            {
-              label: "Pastes",
-              value: stats.pasteCount,
-              highlight: stats.pasteCount > 5,
-            },
-            {
-              label: "Pasted Chars",
-              value: stats.totalPastedChars,
-              highlight: stats.totalPastedChars > 500,
-            },
-            {
-              label: "Tab Switches",
-              value: stats.tabAwayCount,
-              highlight: stats.tabAwayCount > 5,
-            },
-            {
-              label: "Time Away",
-              value: formatDuration(stats.totalTabAwayMs),
-              highlight: stats.totalTabAwayMs > 300000,
-            },
-            { label: "Snapshots", value: stats.snapshotCount },
-            { label: "Cuts", value: stats.cutCount },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              style={{
-                padding: "12px",
-                background: stat.highlight ? "#fef2f2" : "#f9f9f9",
-                border: `1px solid ${stat.highlight ? "#fecaca" : "#eee"}`,
-                borderRadius: "4px",
-              }}
-            >
-              <div
-                style={{ fontSize: "11px", color: "#999", marginBottom: "4px" }}
-              >
-                {stat.label}
-              </div>
-              <div
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <h2 style={{ margin: 0, fontSize: "16px" }}>SF Viewer</h2>
+            <span style={{ fontSize: "12px", color: "#888" }}>
+              {sfFile.metadata.studentId} &middot;{" "}
+              {sfFile.metadata.assignmentId}
+            </span>
+            {sfFile.metadata.submittedAt && (
+              <span
                 style={{
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  color: stat.highlight ? "#dc2626" : "#333",
+                  fontSize: "11px",
+                  color: "#188038",
+                  fontWeight: 600,
+                  background: "#dcfce7",
+                  padding: "1px 6px",
+                  borderRadius: "3px",
                 }}
               >
-                {stat.value}
-              </div>
-            </div>
-          ))}
+                SUBMITTED
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button
+              onClick={() => setStatsOpen(!statsOpen)}
+              style={{
+                padding: "4px 10px",
+                background: statsOpen ? "#e0e7ff" : "#f5f5f5",
+                border: `1px solid ${statsOpen ? "#818cf8" : "#ccc"}`,
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "12px",
+                color: statsOpen ? "#4338ca" : "#333",
+                fontWeight: statsOpen ? 600 : 400,
+              }}
+            >
+              Stats {statsOpen ? "\u25B2" : "\u25BC"}
+            </button>
+            <label
+              style={{
+                padding: "4px 10px",
+                background: "#f5f5f5",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "12px",
+              }}
+            >
+              Load file
+              <input
+                type="file"
+                accept=".sf,.json"
+                onChange={handleFileUpload}
+                style={{ display: "none" }}
+              />
+            </label>
+          </div>
         </div>
-      )}
 
-      {/* Metadata */}
-      <div
-        style={{
-          fontSize: "12px",
-          color: "#888",
-          marginBottom: "12px",
-          display: "flex",
-          gap: "16px",
-          flexWrap: "wrap",
-        }}
-      >
-        <span>Student: {sfFile.metadata.studentId}</span>
-        <span>Assignment: {sfFile.metadata.assignmentId}</span>
-        <span>Created: {new Date(sfFile.metadata.createdAt).toLocaleString()}</span>
-        {sfFile.metadata.submittedAt && (
-          <span>
-            Submitted: {new Date(sfFile.metadata.submittedAt).toLocaleString()}
-          </span>
-        )}
-      </div>
-
-      {/* Timeline */}
-      <Timeline
-        startTime={engine.getStartTime()}
-        endTime={engine.getEndTime()}
-        currentTime={currentTime}
-        markers={markers}
-        onSeek={handleSeek}
-      />
-
-      {/* Playback Controls */}
-      <div
-        style={{
-          display: "flex",
-          gap: "8px",
-          alignItems: "center",
-          padding: "8px 0",
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          onClick={handlePlayPause}
-          style={{
-            padding: "6px 16px",
-            background: isPlaying ? "#f97316" : "#22c55e",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
-          {isPlaying ? "Pause" : "Play"}
-        </button>
-
-        <button
-          onClick={() => setCurrentTime(engine.getStartTime())}
-          style={{
-            padding: "6px 12px",
-            background: "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
-        >
-          Reset
-        </button>
-
-        <span style={{ fontSize: "13px", color: "#666" }}>Speed:</span>
-        {[1, 5, 10, 50, 100].map((speed) => (
-          <button
-            key={speed}
-            onClick={() => setPlaybackSpeed(speed)}
+        {/* Collapsible Stats Panel */}
+        {statsOpen && stats && (
+          <div
             style={{
-              padding: "4px 8px",
-              background: playbackSpeed === speed ? "#1d4ed8" : "#f5f5f5",
-              color: playbackSpeed === speed ? "white" : "#333",
+              display: "flex",
+              gap: "8px",
+              marginBottom: "6px",
+              flexWrap: "wrap",
+            }}
+          >
+            {[
+              { label: "Duration", value: formatDuration(stats.totalDuration) },
+              { label: "Events", value: stats.eventCount },
+              { label: "Keys", value: stats.keystrokeCount },
+              { label: "Backspaces", value: stats.backspaceCount },
+              {
+                label: "Pastes",
+                value: stats.pasteCount,
+                warn: stats.pasteCount > 5,
+              },
+              {
+                label: "Pasted Chars",
+                value: stats.totalPastedChars,
+                warn: stats.totalPastedChars > 500,
+              },
+              {
+                label: "Tab Switches",
+                value: stats.tabAwayCount,
+                warn: stats.tabAwayCount > 5,
+              },
+              {
+                label: "Time Away",
+                value: formatDuration(stats.totalTabAwayMs),
+                warn: stats.totalTabAwayMs > 300000,
+              },
+              { label: "Snapshots", value: stats.snapshotCount },
+              { label: "Cuts", value: stats.cutCount },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                style={{
+                  padding: "6px 10px",
+                  background: stat.warn ? "#fef2f2" : "#f9fafb",
+                  border: `1px solid ${stat.warn ? "#fecaca" : "#e5e7eb"}`,
+                  borderRadius: "4px",
+                  minWidth: "80px",
+                }}
+              >
+                <div style={{ fontSize: "10px", color: "#9ca3af" }}>
+                  {stat.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: stat.warn ? "#dc2626" : "#111",
+                  }}
+                >
+                  {stat.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Timeline */}
+        <Timeline
+          startTime={engine.getStartTime()}
+          endTime={engine.getEndTime()}
+          currentTime={currentTime}
+          markers={markers}
+          onSeek={handleSeek}
+        />
+
+        {/* Playback Controls */}
+        <div
+          style={{
+            display: "flex",
+            gap: "6px",
+            alignItems: "center",
+            flexWrap: "wrap",
+            marginTop: "2px",
+          }}
+        >
+          <button
+            onClick={handlePlayPause}
+            style={{
+              padding: "4px 14px",
+              background: isPlaying ? "#f97316" : "#22c55e",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontWeight: 600,
+              fontSize: "12px",
+            }}
+          >
+            {isPlaying ? "Pause" : "Play"}
+          </button>
+
+          <button
+            onClick={() => setCurrentTime(engine.getStartTime())}
+            style={{
+              padding: "4px 10px",
+              background: "#f5f5f5",
               border: "1px solid #ccc",
               borderRadius: "4px",
               cursor: "pointer",
               fontSize: "12px",
             }}
           >
-            {speed}x
+            Reset
           </button>
-        ))}
+
+          <span style={{ fontSize: "12px", color: "#888", marginLeft: "4px" }}>
+            Speed:
+          </span>
+          {[1, 5, 10, 50, 100].map((speed) => (
+            <button
+              key={speed}
+              onClick={() => setPlaybackSpeed(speed)}
+              style={{
+                padding: "3px 7px",
+                background: playbackSpeed === speed ? "#1d4ed8" : "#f5f5f5",
+                color: playbackSpeed === speed ? "white" : "#555",
+                border: `1px solid ${playbackSpeed === speed ? "#1d4ed8" : "#ccc"}`,
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: playbackSpeed === speed ? 600 : 400,
+              }}
+            >
+              {speed}x
+            </button>
+          ))}
+
+          {/* Snapshot jump buttons (inline, compact) */}
+          {snapshots.length > 0 && (
+            <>
+              <div
+                style={{
+                  width: "1px",
+                  height: "18px",
+                  background: "#d1d5db",
+                  margin: "0 4px",
+                }}
+              />
+              <span style={{ fontSize: "11px", color: "#888" }}>
+                Snapshots:
+              </span>
+              {snapshots.map((snapshot) => (
+                <button
+                  key={snapshot.id}
+                  onClick={() => jumpToSnapshot(snapshot.id)}
+                  title={`${snapshot.label} (${new Date(snapshot.timestamp).toLocaleTimeString()})`}
+                  style={{
+                    padding: "3px 8px",
+                    background:
+                      selectedSnapshot === snapshot.id ? "#3b82f6" : "#f5f5f5",
+                    color:
+                      selectedSnapshot === snapshot.id ? "white" : "#555",
+                    border: `1px solid ${selectedSnapshot === snapshot.id ? "#3b82f6" : "#ccc"}`,
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "11px",
+                    maxWidth: "120px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {snapshot.label}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Snapshots Navigation */}
-      {snapshots.length > 0 && (
-        <div style={{ padding: "8px 0" }}>
-          <div
-            style={{
-              fontSize: "13px",
-              fontWeight: "bold",
-              marginBottom: "6px",
-            }}
-          >
-            Snapshots (Student-marked drafts):
-          </div>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {snapshots.map((snapshot) => (
-              <button
-                key={snapshot.id}
-                onClick={() => jumpToSnapshot(snapshot.id)}
-                style={{
-                  padding: "4px 12px",
-                  background:
-                    selectedSnapshot === snapshot.id ? "#3b82f6" : "#f5f5f5",
-                  color: selectedSnapshot === snapshot.id ? "white" : "#333",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                }}
-              >
-                {snapshot.label} (
-                {new Date(snapshot.timestamp).toLocaleTimeString()})
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Main content area: Document preview + Event log */}
+      {/* ── Main content: 70% document / 30% event log ──────── */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "16px",
-          marginTop: "16px",
+          gridTemplateColumns: "7fr 3fr",
+          gap: "12px",
+          flex: 1,
+          minHeight: 0, // Allow children to shrink below content size
+          marginTop: "10px",
         }}
       >
         {/* Document Preview */}
-        <div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+          }}
+        >
           <div
             style={{
-              fontWeight: "bold",
-              fontSize: "13px",
-              marginBottom: "8px",
+              fontSize: "12px",
+              fontWeight: 600,
+              color: "#6b7280",
+              marginBottom: "6px",
+              flexShrink: 0,
             }}
           >
-            Document at current position:
+            Document Preview
           </div>
           <div
             style={{
-              border: "1px solid #ddd",
-              borderRadius: "4px",
-              padding: "16px",
-              minHeight: "300px",
+              border: "1px solid #e5e7eb",
+              borderRadius: "6px",
+              padding: "32px 48px",
               background: "white",
+              flex: 1,
+              overflowY: "auto",
+              fontSize: "12pt",
+              lineHeight: "1.5",
+              fontFamily: '"Times New Roman", Times, serif',
+              color: "#000",
             }}
           >
             {currentContent ? (
               <div dangerouslySetInnerHTML={{ __html: currentContent }} />
             ) : (
               <div style={{ color: "#999", fontStyle: "italic" }}>
-                No content at this position. Move the timeline to a snapshot to
-                see document content.
+                No content at this position. Move the timeline to see the
+                document.
               </div>
             )}
           </div>
         </div>
 
         {/* Event Log */}
-        <div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+          }}
+        >
           <div
             style={{
-              fontWeight: "bold",
-              fontSize: "13px",
-              marginBottom: "8px",
+              fontSize: "12px",
+              fontWeight: 600,
+              color: "#6b7280",
+              marginBottom: "6px",
+              flexShrink: 0,
             }}
           >
-            Events near current position:
+            Event Log
           </div>
-          <EventLog
-            events={allEvents}
-            currentTime={currentTime}
-            startTime={engine.getStartTime()}
-          />
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <EventLog
+              events={allEvents}
+              currentTime={currentTime}
+              startTime={engine.getStartTime()}
+            />
+          </div>
         </div>
       </div>
     </div>

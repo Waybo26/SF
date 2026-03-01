@@ -5,6 +5,10 @@ import type { SFLogger } from "@/lib/sf-logger";
 /**
  * Tiptap extension that captures paste and cut events.
  * Captures the content being pasted/cut and the cursor position.
+ *
+ * When pasting over a selection, logs a backspace (deletion) event
+ * for the selected range before logging the paste itself, so playback
+ * can faithfully reproduce the operation.
  */
 export const PasteLogger = Extension.create<{ logger: SFLogger | null }>({
   name: "pasteLogger",
@@ -29,7 +33,15 @@ export const PasteLogger = Extension.create<{ logger: SFLogger | null }>({
             if (clipboardData) {
               const text = clipboardData.getData("text/plain");
               if (text) {
-                const { from } = view.state.selection;
+                const { from, to } = view.state.selection;
+
+                // If pasting over a selection, TipTap replaces the selection
+                // with the pasted content. Log the implicit deletion first.
+                if (from !== to) {
+                  const selectedContent = view.state.doc.textBetween(from, to, " ");
+                  logger.logBackspace(from, selectedContent, to);
+                }
+
                 logger.logPaste(text, from);
               }
             }

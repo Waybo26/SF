@@ -5,6 +5,11 @@ import type { SFLogger } from "@/lib/sf-logger";
 /**
  * Tiptap extension that captures keystrokes, backspace, and delete events.
  * Hooks into ProseMirror's keyboard handling to log every key action.
+ *
+ * Handles selection-based deletions: when the user has a text selection
+ * and presses Backspace/Delete, the full range is logged (not just 1 char).
+ * When the user types a character over a selection, the selection deletion
+ * is logged before the character insertion.
  */
 export const KeystrokeLogger = Extension.create<{ logger: SFLogger | null }>({
   name: "keystrokeLogger",
@@ -25,7 +30,8 @@ export const KeystrokeLogger = Extension.create<{ logger: SFLogger | null }>({
           handleKeyDown(view, event) {
             if (!logger) return false;
 
-            const { from } = view.state.selection;
+            const { from, to } = view.state.selection;
+            const hasSelection = from !== to;
 
             // Skip modifier-only keys
             if (
@@ -37,54 +43,76 @@ export const KeystrokeLogger = Extension.create<{ logger: SFLogger | null }>({
               return false;
             }
 
+            // Skip keyboard shortcuts (Ctrl+C, Ctrl+V, Ctrl+Z, etc.)
+            // These are handled by other extensions or TipTap commands
+            if (event.ctrlKey || event.metaKey) {
+              return false;
+            }
+
             // Backspace
             if (event.key === "Backspace") {
-              // Get the character that will be deleted
-              const pos = from;
-              if (pos > 0) {
+              if (hasSelection) {
+                // Selection-based deletion: delete the entire selected range
+                const content = view.state.doc.textBetween(from, to, " ");
+                logger.logBackspace(from, content, to);
+              } else if (from > 0) {
+                // Single character deletion
                 const deletedContent = view.state.doc.textBetween(
-                  Math.max(0, pos - 1),
-                  pos,
+                  Math.max(0, from - 1),
+                  from,
                   ""
                 );
-                logger.logBackspace(pos, deletedContent);
+                logger.logBackspace(from, deletedContent);
               }
               return false;
             }
 
             // Delete key
             if (event.key === "Delete") {
-              const pos = from;
-              const docSize = view.state.doc.content.size;
-              if (pos < docSize) {
-                const deletedContent = view.state.doc.textBetween(
-                  pos,
-                  Math.min(docSize, pos + 1),
-                  ""
-                );
-                logger.logDelete(pos, deletedContent);
+              if (hasSelection) {
+                // Selection-based deletion
+                const content = view.state.doc.textBetween(from, to, " ");
+                logger.logDelete(from, content, to);
+              } else {
+                const docSize = view.state.doc.content.size;
+                if (from < docSize) {
+                  const deletedContent = view.state.doc.textBetween(
+                    from,
+                    Math.min(docSize, from + 1),
+                    ""
+                  );
+                  logger.logDelete(from, deletedContent);
+                }
               }
               return false;
             }
 
-            // Skip non-printable keys (except Enter, Tab)
+            // Enter
             if (event.key === "Enter") {
+              if (hasSelection) {
+                // Typing Enter over a selection: TipTap deletes the selection
+                // then splits the block. Log the deletion first.
+                const content = view.state.doc.textBetween(from, to, " ");
+                logger.logBackspace(from, content, to);
+              }
               logger.logKeystroke("Enter", from);
               return false;
             }
 
+            // Tab — skip logging here. The Indent extension handles Tab
+            // and the SelectionLogger will capture the resulting paragraph_format event.
             if (event.key === "Tab") {
-              logger.logKeystroke("Tab", from);
-              return false;
-            }
-
-            // Skip keyboard shortcuts (Ctrl+C, Ctrl+V, etc.)
-            if (event.ctrlKey || event.metaKey) {
               return false;
             }
 
             // Regular printable character
             if (event.key.length === 1) {
+              if (hasSelection) {
+                // Typing over a selection: TipTap deletes the selection first,
+                // then inserts the character. Log the deletion.
+                const content = view.state.doc.textBetween(from, to, " ");
+                logger.logBackspace(from, content, to);
+              }
               logger.logKeystroke(event.key, from);
             }
 

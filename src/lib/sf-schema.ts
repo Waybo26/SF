@@ -11,7 +11,7 @@ import { Schema } from "@tiptap/pm/model";
 
 /**
  * Helper to build paragraph-level attributes shared by paragraph and heading nodes.
- * These correspond to the TextAlign, LineSpacing, and Indent extensions.
+ * These correspond to the TextAlign, LineSpacing, Indent, and FirstLineIndent extensions.
  */
 function blockAttrs(extra: Record<string, unknown> = {}) {
   return {
@@ -19,6 +19,7 @@ function blockAttrs(extra: Record<string, unknown> = {}) {
     textAlign: { default: null },
     lineHeight: { default: null },
     indent: { default: 0 },
+    textIndent: { default: null },
   };
 }
 
@@ -40,6 +41,9 @@ function blockStyle(attrs: Record<string, unknown>): Record<string, string> {
     style.push(`margin-left: ${Number(attrs.indent) * 0.5}in`);
     out["data-indent"] = String(attrs.indent);
   }
+  if (attrs.textIndent) {
+    style.push(`text-indent: ${attrs.textIndent}`);
+  }
 
   if (style.length > 0) {
     out.style = style.join("; ");
@@ -55,7 +59,8 @@ function parseBlockAttrs(dom: HTMLElement) {
   const lineHeight = dom.style.lineHeight || null;
   const indentAttr = dom.getAttribute("data-indent");
   const indent = indentAttr ? parseInt(indentAttr, 10) : 0;
-  return { textAlign, lineHeight, indent };
+  const textIndent = dom.style.textIndent || null;
+  return { textAlign, lineHeight, indent, textIndent };
 }
 
 export const sfSchema = new Schema({

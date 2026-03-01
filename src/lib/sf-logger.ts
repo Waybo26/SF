@@ -40,19 +40,30 @@ export class SFLogger {
     });
   }
 
-  logBackspace(position: number, deletedContent: string): void {
+  /**
+   * Log a backspace deletion. If toPosition is provided, the deletion
+   * covers the range [position, toPosition] (selection-based deletion).
+   * Otherwise, a single character at position is deleted.
+   */
+  logBackspace(position: number, deletedContent: string, toPosition?: number): void {
     this.events.push({
       type: "backspace",
       position,
+      ...(toPosition !== undefined ? { toPosition } : {}),
       deletedContent,
       timestamp: Date.now(),
     });
   }
 
-  logDelete(position: number, deletedContent: string): void {
+  /**
+   * Log a forward-delete. If toPosition is provided, the deletion
+   * covers the range [position, toPosition] (selection-based deletion).
+   */
+  logDelete(position: number, deletedContent: string, toPosition?: number): void {
     this.events.push({
       type: "delete",
       position,
+      ...(toPosition !== undefined ? { toPosition } : {}),
       deletedContent,
       timestamp: Date.now(),
     });
@@ -87,11 +98,23 @@ export class SFLogger {
     });
   }
 
-  logFormatting(mark: string, from: number, to: number, action: "add" | "remove"): void {
+  /**
+   * Log a mark (inline formatting) change.
+   * @param attrs - mark attributes (e.g. { color: "#c0392b" } for textStyle).
+   *                Pass undefined for simple marks like bold/italic.
+   */
+  logFormatting(
+    mark: string,
+    from: number,
+    to: number,
+    action: "add" | "remove",
+    attrs?: Record<string, unknown>,
+  ): void {
     this.events.push({
       type: "formatting",
       action,
       mark,
+      ...(attrs !== undefined ? { attrs } : {}),
       from,
       to,
       timestamp: Date.now(),
@@ -104,6 +127,25 @@ export class SFLogger {
       attr,
       value,
       position,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Log a node type change (e.g. paragraph → heading, paragraph → list item).
+   */
+  logNodeChange(
+    fromNodeType: string,
+    toNodeType: string,
+    position: number,
+    attrs?: Record<string, unknown>,
+  ): void {
+    this.events.push({
+      type: "node_change",
+      fromNodeType,
+      toNodeType,
+      position,
+      ...(attrs !== undefined ? { attrs } : {}),
       timestamp: Date.now(),
     });
   }
@@ -227,7 +269,6 @@ export class SFLogger {
     logger.events = file.events;
     logger.snapshots = file.snapshots;
     logger.startTime = file.events[0]?.timestamp ?? Date.now();
-    // Restore currentContent — backward compat: old files may not have it
     logger.currentContent = file.currentContent ?? "";
     return logger;
   }
