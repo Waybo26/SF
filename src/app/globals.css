@@ -1,21 +1,39 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand-red: #9D1535;
+  --color-brand-red-light: #C93055;
+  --color-brand-red-dark: #721027;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-grid-flow: gridFlow 20s linear infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
+  
+  @keyframes gridFlow {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(50px); }
+  }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
 
 /* TipTap editor: remove browser focus outline and fill container */
@@ -30,4 +48,109 @@ body {
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* Custom Utilities */
+.glass-panel {
+  @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-red to-brand-red-light;
+}
+
+/* Typography Utilities */
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.text-shadow-md {
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+.text-shadow-glow {
+  text-shadow: 0 0 20px rgba(157, 21, 53, 0.3);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+
+/* Mesh Gradients */
+.mesh-bg-hero {
+  background-color: #ffffff;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(346, 76%, 35%, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(210, 100%, 96%, 1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(346, 76%, 35%, 0.03) 0px, transparent 50%);
+}
+
+.mesh-bg-red {
+  background-color: #fff1f2;
+  background-image:
+    radial-gradient(at 50% 50%, hsla(346, 76%, 35%, 0.05) 0px, transparent 60%),
+    linear-gradient(to bottom, #ffffff, transparent, #ffffff);
+}
+
+/* Technical Grid Pattern */
+/* Pulsing Grid Animation */
+@keyframes pulseGrid {
+  0%, 100% { opacity: 0.1; transform: scale(0.95); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.animate-pulse-grid {
+  animation: pulseGrid 4s ease-in-out infinite;
+}
+
+.tech-grid {
+  background-image: 
+    linear-gradient(rgba(226, 232, 240, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(226, 232, 240, 0.4) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Scroll Reveal Animations - Enhanced */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 1s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered Delay Utilities */
+.reveal-delay-100 { transition-delay: 100ms; }
+.reveal-delay-200 { transition-delay: 200ms; }
+.reveal-delay-300 { transition-delay: 300ms; }
+
+/* Hero Frame Animations */
+@keyframes drawFrame {
+  0% { width: 0; opacity: 0; }
+  100% { width: 100%; opacity: 1; }
+}
+
+.animate-draw-width {
+  animation: drawFrame 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes drawFrameHeight {
+  0% { height: 0; opacity: 0; }
+  100% { height: 100%; opacity: 1; }
+}
+
+.animate-draw-height {
+  animation: drawFrameHeight 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }

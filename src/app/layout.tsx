@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/landing/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,55 +24,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900 font-sans`}
       >
-        {/* Navigation */}
-        <nav
-          style={{
-            display: "flex",
-            gap: "20px",
-            padding: "12px 24px",
-            borderBottom: "1px solid #e5e5e5",
-            background: "#fafafa",
-            alignItems: "center",
-          }}
-        >
-          <a
-            href="/"
-            style={{
-              fontWeight: "bold",
-              fontSize: "18px",
-              textDecoration: "none",
-              color: "#111",
-            }}
-          >
-            SF Editor
-          </a>
-          <a
-            href="/editor"
-            style={{
-              textDecoration: "none",
-              color: "#555",
-              fontSize: "14px",
-            }}
-          >
-            Editor
-          </a>
-          <a
-            href="/teacher"
-            style={{
-              textDecoration: "none",
-              color: "#555",
-              fontSize: "14px",
-            }}
-          >
-            Teacher
-          </a>
-        </nav>
-
-        {children}
+        <Navbar />
+        <div className="pt-16">
+          {children}
+        </div>
       </body>
     </html>
   );
