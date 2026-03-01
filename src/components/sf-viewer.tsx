@@ -472,12 +472,25 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
           >
             <div
               className="sf-viewer-page"
+              style={{
+                width: "8.5in",
+                minHeight: "11in",
+                padding: "1in",
+                background: "white",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
+                fontSize: "12pt",
+                lineHeight: "1.5",
+                fontFamily: '"Times New Roman", Times, serif',
+                color: "#000",
+                boxSizing: "border-box",
+                position: "relative",
+              }}
             >
               {/* Page break overlay */}
               <div className="sf-page-breaks" />
               {currentContent ? (
                 <div
-                  style={{ position: "relative", zIndex: 3 }}
+                  style={{ position: "relative", zIndex: 3, width: "100%" }}
                   dangerouslySetInnerHTML={{ __html: currentContent }}
                 />
               ) : (

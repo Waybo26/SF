@@ -450,18 +450,20 @@ export default function SFEditor({
     <div
       className="sf-editor-root"
       style={{
-        minHeight: "100vh",
+        height: "100vh",
         background: "#e8eaed",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
       }}
     >
       {/* ── Toolbar ─────────────────────────────────────────────── */}
       <div
         className="sf-toolbar"
         style={{
-          position: "sticky",
-          top: 0,
+          flexShrink: 0,
           zIndex: 50,
           display: "flex",
           gap: "2px",
@@ -997,6 +999,7 @@ export default function SFEditor({
           alignItems: "center",
           overflowY: "auto",
           flex: 1,
+          minHeight: 0,
         }}
       >
         <div
@@ -1032,13 +1035,16 @@ export default function SFEditor({
         style={{
           display: "flex",
           gap: "8px",
-          padding: "12px 20px",
+          padding: "8px 20px",
           alignItems: "center",
           flexWrap: "wrap",
           maxWidth: "8.5in",
           margin: "0 auto",
           width: "100%",
           boxSizing: "border-box",
+          flexShrink: 0,
+          background: "#f8f9fa",
+          borderTop: "1px solid #dadce0",
         }}
       >
         {showSnapshotInput ? (
@@ -1163,17 +1169,14 @@ export default function SFEditor({
         style={{
           display: "flex",
           gap: "20px",
-          padding: "8px 12px",
-          background: "#f8f9fa",
-          border: "1px solid #dadce0",
-          borderRadius: "4px",
+          padding: "6px 12px",
+          background: "#f0f1f3",
+          borderTop: "1px solid #dadce0",
           fontSize: "12px",
           color: "#5f6368",
           flexWrap: "wrap",
-          maxWidth: "8.5in",
-          margin: "0 auto 20px",
-          width: "100%",
-          boxSizing: "border-box",
+          justifyContent: "center",
+          flexShrink: 0,
         }}
       >
         <span>Words: {wordCount}</span>

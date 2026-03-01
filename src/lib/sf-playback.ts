@@ -32,7 +32,15 @@ function pmDocToHtml(doc: PmNode): string {
   const fragment = serializer.serializeFragment(doc.content);
   const wrapper = document.createElement("div");
   wrapper.appendChild(fragment);
-  return wrapper.innerHTML;
+  let html = wrapper.innerHTML;
+
+  // Insert <br> into empty paragraphs so browsers render them with height.
+  // Without this, <p></p> collapses to zero height and consecutive Enter
+  // presses produce no visible whitespace. Mirrors TipTap's trailingBreak.
+  html = html.replace(/<p><\/p>/g, "<p><br></p>");
+  html = html.replace(/<p( [^>]*)><\/p>/g, "<p$1><br></p>");
+
+  return html;
 }
 
 /**

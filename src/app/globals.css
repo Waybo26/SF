@@ -118,6 +118,79 @@ body {
   position: relative;
 }
 
+/* Viewer paragraph styling — match the editor's .ProseMirror p rules */
+.sf-viewer-page p {
+  margin: 0;
+}
+
+/* Ensure empty paragraphs render with visible height in the viewer
+   (fallback for cases where the <br> injection doesn't cover) */
+.sf-viewer-page p:empty {
+  min-height: 1em;
+}
+
+/* Viewer heading styling — match the editor */
+.sf-viewer-page h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0.67em 0;
+  line-height: 1.2;
+}
+
+.sf-viewer-page h2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.75em 0;
+  line-height: 1.25;
+}
+
+.sf-viewer-page h3 {
+  font-size: 1.17em;
+  font-weight: 600;
+  margin: 0.83em 0;
+  line-height: 1.3;
+}
+
+/* Viewer list styling */
+.sf-viewer-page ul,
+.sf-viewer-page ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.sf-viewer-page ul { list-style-type: disc; }
+.sf-viewer-page ol { list-style-type: decimal; }
+
+.sf-viewer-page li {
+  margin: 0.15em 0;
+}
+
+.sf-viewer-page li p {
+  margin: 0;
+}
+
+/* Viewer blockquote */
+.sf-viewer-page blockquote {
+  border-left: 3px solid #d1d5db;
+  padding-left: 1em;
+  margin: 0.8em 0;
+  color: #4b5563;
+  font-style: italic;
+}
+
+/* Viewer highlight marks */
+.sf-viewer-page mark {
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* Viewer horizontal rule */
+.sf-viewer-page hr {
+  border: none;
+  border-top: 1px solid #d1d5db;
+  margin: 1em 0;
+}
+
 /* Placeholder text for empty editor */
 .ProseMirror p.is-editor-empty:first-child::before {
   color: #adb5bd;
