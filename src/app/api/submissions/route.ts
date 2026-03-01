@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
       snapshotCount: true,
       createdAt: true,
       submittedAt: true,
+      ai_detection_status: true,
+      ai_detection_details: true,
       // Exclude sfFile from list queries (it can be large)
     },
     orderBy: { createdAt: "desc" },
@@ -60,6 +62,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Create submission with initial status
   const submission = await prisma.submission.create({
     data: {
       assignmentId,

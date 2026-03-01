@@ -25,6 +25,7 @@ interface ClassDetail {
       snapshotCount: number;
       createdAt: string;
       submittedAt: string | null;
+      ai_detection_status: string | null;
     }[];
     _count: { students: number; submissions: number };
   }[];
@@ -119,6 +120,32 @@ export default function AssignmentDetailPage() {
     }
   };
 
+  const getAIStatusStyle = (status: string | null) => {
+    switch (status) {
+      case "LIKELY_HUMAN":
+        return { background: "#dcfce7", color: "#166534", border: "1px solid #bbf7d0" };
+      case "SUSPICIOUS":
+        return { background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" };
+      case "LIKELY_AI_ASSISTED":
+        return { background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca" };
+      default:
+        return { background: "#f3f4f6", color: "#9ca3af", border: "1px solid #e5e7eb" };
+    }
+  };
+
+  const getAIStatusLabel = (status: string | null) => {
+    switch (status) {
+      case "LIKELY_HUMAN":
+        return "Likely Human";
+      case "SUSPICIOUS":
+        return "Suspicious";
+      case "LIKELY_AI_ASSISTED":
+        return "Likely AI";
+      default:
+        return "Pending";
+    }
+  };
+
   return (
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "40px 20px" }}>
       {/* Breadcrumb */}
@@ -189,6 +216,9 @@ export default function AssignmentDetailPage() {
                 Time Spent
               </th>
               <th style={{ textAlign: "center", padding: "8px 12px", color: "#666", fontWeight: 600 }}>
+                AI Analysis
+              </th>
+              <th style={{ textAlign: "center", padding: "8px 12px", color: "#666", fontWeight: 600 }}>
                 Action
               </th>
             </tr>
@@ -252,6 +282,24 @@ export default function AssignmentDetailPage() {
                   </td>
                   <td style={{ textAlign: "center", padding: "10px 12px", color: hasSubmission ? "#333" : "#ccc" }}>
                     {hasSubmission ? formatTime(submission.totalTimeSpent) : "-"}
+                  </td>
+                  <td style={{ textAlign: "center", padding: "10px 12px" }}>
+                    {hasSubmission && submission.status === "SUBMITTED" ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "2px 10px",
+                          borderRadius: "12px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          ...getAIStatusStyle(submission.ai_detection_status),
+                        }}
+                      >
+                        {getAIStatusLabel(submission.ai_detection_status)}
+                      </span>
+                    ) : (
+                      <span style={{ color: "#ccc", fontSize: "12px" }}>-</span>
+                    )}
                   </td>
                   <td style={{ textAlign: "center", padding: "10px 12px" }}>
                     {hasSubmission ? (
