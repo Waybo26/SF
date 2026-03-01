@@ -13,8 +13,15 @@ interface ClassSummary {
 }
 
 export default function TeacherPage() {
-  const { user, isLoggedIn, isLoading } = useAuth();
+  const { user, isLoggedIn, isLoading, logout } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
+
+  // Auto-open login modal when not logged in
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) {
+      setShowLogin(true);
+    }
+  }, [isLoading, isLoggedIn]);
 
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,21 +87,41 @@ export default function TeacherPage() {
         <p style={{ color: "#666", marginBottom: "24px", fontSize: "14px" }}>
           You are logged in as a student. The dashboard is only available to teachers.
         </p>
-        <a
-          href="/editor"
-          style={{
-            padding: "10px 24px",
-            background: "#1d4ed8",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "14px",
-            textDecoration: "none",
-          }}
-        >
-          Go to Student Editor
-        </a>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <a
+            href="/student"
+            style={{
+              padding: "10px 24px",
+              background: "#1d4ed8",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "14px",
+              textDecoration: "none",
+            }}
+          >
+            Go to Student Dashboard
+          </a>
+          <button
+            onClick={async () => {
+              await logout();
+              setShowLogin(true);
+            }}
+            style={{
+              padding: "10px 24px",
+              background: "transparent",
+              color: "#1d4ed8",
+              border: "1px solid #1d4ed8",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "14px",
+            }}
+          >
+            Switch Account
+          </button>
+        </div>
+        <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />
       </div>
     );
   }

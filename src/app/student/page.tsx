@@ -115,8 +115,15 @@ function getAssignmentPriority(assignment: AssignmentQueueItem) {
 }
 
 export default function StudentDashboard() {
-  const { user, isLoggedIn, isLoading } = useAuth();
+  const { user, isLoggedIn, isLoading, logout } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
+
+  // Auto-open login modal when not logged in
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) {
+      setShowLogin(true);
+    }
+  }, [isLoading, isLoggedIn]);
   const [classes, setClasses] = useState<ClassSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("due-asc");
@@ -239,13 +246,25 @@ export default function StudentDashboard() {
           <p className="mt-2 text-sm text-slate-600">
             You are currently logged in as a teacher.
           </p>
-          <Link
-            href="/teacher"
-            className="mt-6 inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-          >
-            Go to Teacher Dashboard
-          </Link>
+          <div className="mt-6 flex items-center gap-3">
+            <Link
+              href="/teacher"
+              className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+            >
+              Go to Teacher Dashboard
+            </Link>
+            <button
+              onClick={async () => {
+                await logout();
+                setShowLogin(true);
+              }}
+              className="inline-flex items-center rounded-lg border border-slate-300 bg-transparent px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Switch Account
+            </button>
+          </div>
         </div>
+        <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />
       </div>
     );
   }

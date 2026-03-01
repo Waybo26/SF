@@ -3,12 +3,10 @@
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { LoginModal } from "@/components/login-modal";
-import { useRouter } from "next/navigation";
 
 export function NavAuth() {
   const { user, isLoggedIn, isLoading, logout } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
-  const router = useRouter();
 
   if (isLoading) {
     return (
@@ -38,7 +36,6 @@ export function NavAuth() {
         <button
           onClick={async () => {
             await logout();
-            router.push("/");
           }}
           style={{
             padding: "4px 12px",
