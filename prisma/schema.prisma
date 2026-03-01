@@ -93,6 +93,8 @@ model Submission {
   snapshotCount  Int       @default(0)
   createdAt      DateTime  @default(now())
   submittedAt    DateTime?
+  ai_detection_status  String? // Verdict: LIKELY_HUMAN, SUSPICIOUS, LIKELY_AI_ASSISTED
+  ai_detection_details String? // Full JSON response: { verdict, confidence, reasons[] }
 
   // Relations
   assignment Assignment @relation(fields: [assignmentId], references: [id])

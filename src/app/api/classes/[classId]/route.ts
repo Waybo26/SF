@@ -39,6 +39,7 @@ export async function GET(
                 snapshotCount: true,
                 createdAt: true,
                 submittedAt: true,
+                ai_detection_status: true,
               },
             },
           },
@@ -104,6 +105,7 @@ export async function GET(
               snapshotCount: true,
               createdAt: true,
               submittedAt: true,
+              ai_detection_status: true,
             },
           },
           _count: {
