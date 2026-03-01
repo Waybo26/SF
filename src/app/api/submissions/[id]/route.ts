@@ -106,26 +106,33 @@ export async function PUT(
     data: updateData,
   });
 
-  // Run AI analysis when submission is finalized
+  // Run AI analysis in the background when submission is finalized.
+  // Fire-and-forget: the response returns immediately to the student,
+  // and the analysis result is written to the DB when it completes.
   if (status === "SUBMITTED" && sfFile) {
-    try {
-      const parsed = parseSFFile(sfFile);
-      const analysisResult = await analyzeSFFile(parsed);
-
-      await prisma.submission.update({
-        where: { id },
-        data: {
-          ai_detection_status: analysisResult.verdict,
-          ai_detection_details: JSON.stringify(analysisResult),
-        },
-      });
-
-      console.log(`AI Analysis for submission ${id}: ${analysisResult.verdict} (confidence: ${analysisResult.confidence})`);
-    } catch (error) {
-      // Log but don't fail the submission - AI analysis is non-blocking
-      console.error(`AI analysis failed for submission ${id}:`, error);
-    }
+    runAIAnalysis(id, sfFile);
   }
 
   return NextResponse.json(submission);
+}
+
+// Background AI analysis - runs without blocking the HTTP response
+async function runAIAnalysis(submissionId: string, sfFile: string) {
+  try {
+    const parsed = parseSFFile(sfFile);
+    const analysisResult = await analyzeSFFile(parsed);
+
+    await prisma.submission.update({
+      where: { id: submissionId },
+      data: {
+        ai_detection_status: analysisResult.verdict,
+        ai_detection_details: JSON.stringify(analysisResult),
+      },
+    });
+
+    console.log(`AI Analysis for submission ${submissionId}: ${analysisResult.verdict} (confidence: ${analysisResult.confidence})`);
+  } catch (error) {
+    // Log but don't fail - this runs in the background after the response was already sent
+    console.error(`AI analysis failed for submission ${submissionId}:`, error);
+  }
 }

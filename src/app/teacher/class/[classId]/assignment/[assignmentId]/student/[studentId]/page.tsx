@@ -18,6 +18,8 @@ interface SubmissionData {
   snapshotCount: number;
   createdAt: string;
   submittedAt: string | null;
+  ai_detection_status: string | null;
+  ai_detection_details: string | null;
 }
 
 interface StudentInfo {
@@ -239,6 +241,14 @@ export default function StudentSubmissionPage() {
         </div>
       </div>
 
+      {/* AI Analysis Panel */}
+      {submission?.status === "SUBMITTED" && (
+        <AIAnalysisPanel
+          status={submission.ai_detection_status}
+          details={submission.ai_detection_details}
+        />
+      )}
+
       {/* SF Viewer */}
       {submission?.sfFile ? (
         <SFViewer sfContent={submission.sfFile} />
@@ -252,8 +262,142 @@ export default function StudentSubmissionPage() {
             borderRadius: "8px",
           }}
         >
-          No .sf file content available for this submission.
+           No .sf file content available for this submission.
         </div>
+      )}
+    </div>
+  );
+}
+
+// --- AI Analysis Panel Component ---
+
+interface AIAnalysisDetails {
+  verdict: string;
+  confidence: number;
+  reasons: string[];
+}
+
+function AIAnalysisPanel({
+  status,
+  details,
+}: {
+  status: string | null;
+  details: string | null;
+}) {
+  let parsed: AIAnalysisDetails | null = null;
+  if (details) {
+    try {
+      parsed = JSON.parse(details);
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  const getVerdictStyle = (verdict: string | null) => {
+    switch (verdict) {
+      case "LIKELY_HUMAN":
+        return { background: "#dcfce7", color: "#166534", borderColor: "#bbf7d0" };
+      case "SUSPICIOUS":
+        return { background: "#fef3c7", color: "#92400e", borderColor: "#fde68a" };
+      case "LIKELY_AI_ASSISTED":
+        return { background: "#fef2f2", color: "#991b1b", borderColor: "#fecaca" };
+      default:
+        return { background: "#f3f4f6", color: "#9ca3af", borderColor: "#e5e7eb" };
+    }
+  };
+
+  const getVerdictLabel = (verdict: string | null) => {
+    switch (verdict) {
+      case "LIKELY_HUMAN":
+        return "Likely Human";
+      case "SUSPICIOUS":
+        return "Suspicious";
+      case "LIKELY_AI_ASSISTED":
+        return "Likely AI Assisted";
+      default:
+        return "Pending";
+    }
+  };
+
+  const verdictStyle = getVerdictStyle(status);
+
+  // No analysis yet
+  if (!status && !parsed) {
+    return (
+      <div
+        style={{
+          padding: "16px 20px",
+          background: "#f9fafb",
+          border: "1px solid #e5e7eb",
+          borderRadius: "8px",
+          marginBottom: "16px",
+          fontSize: "13px",
+          color: "#9ca3af",
+        }}
+      >
+        AI analysis pending -- results will appear here once processing completes.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        padding: "16px 20px",
+        background: verdictStyle.background,
+        border: `1px solid ${verdictStyle.borderColor}`,
+        borderRadius: "8px",
+        marginBottom: "16px",
+      }}
+    >
+      {/* Header row: verdict badge + confidence */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          marginBottom: parsed?.reasons?.length ? "12px" : "0",
+        }}
+      >
+        <span style={{ fontSize: "13px", fontWeight: 600, color: "#555" }}>
+          AI Analysis:
+        </span>
+        <span
+          style={{
+            display: "inline-block",
+            padding: "3px 12px",
+            borderRadius: "12px",
+            fontSize: "12px",
+            fontWeight: 700,
+            color: verdictStyle.color,
+            background: "rgba(255,255,255,0.6)",
+            border: `1px solid ${verdictStyle.borderColor}`,
+          }}
+        >
+          {getVerdictLabel(status)}
+        </span>
+        {parsed?.confidence !== undefined && (
+          <span style={{ fontSize: "13px", color: "#666" }}>
+            Confidence: {Math.round(parsed.confidence * 100)}%
+          </span>
+        )}
+      </div>
+
+      {/* Reasons list */}
+      {parsed?.reasons && parsed.reasons.length > 0 && (
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: "20px",
+            fontSize: "13px",
+            color: verdictStyle.color,
+            lineHeight: "1.6",
+          }}
+        >
+          {parsed.reasons.map((reason, i) => (
+            <li key={i}>{reason}</li>
+          ))}
+        </ul>
       )}
     </div>
   );
