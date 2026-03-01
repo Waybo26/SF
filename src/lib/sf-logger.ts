@@ -31,11 +31,16 @@ export class SFLogger {
 
   // --- Logging Methods ---
 
-  logKeystroke(key: string, position: number): void {
+  logKeystroke(
+    key: string,
+    position: number,
+    marks?: Array<{ type: string; attrs?: Record<string, unknown> }>,
+  ): void {
     this.events.push({
       type: "keystroke",
       key,
       position,
+      ...(marks && marks.length > 0 ? { marks } : {}),
       timestamp: Date.now(),
     });
   }

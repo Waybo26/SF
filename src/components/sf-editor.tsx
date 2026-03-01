@@ -845,6 +845,20 @@ export default function SFEditor({
 
         {/* ── Indent / Outdent ─────────────────────────────────── */}
         <TBtn
+          active={!!editor?.getAttributes("paragraph").textIndent || !!editor?.getAttributes("heading").textIndent}
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().toggleFirstLineIndent().run()}
+          title="First-line indent (0.5in)"
+          style={{ fontSize: "11px", fontWeight: 600, width: "auto", padding: "0 5px" }}
+        >
+          {/* First-line indent icon: paragraph symbol with indented first line */}
+          <svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor">
+            <rect x="5" y="2" width="10" height="1.2" rx="0.5" />
+            <rect x="1" y="6" width="14" height="1.2" rx="0.5" />
+            <rect x="1" y="10" width="14" height="1.2" rx="0.5" />
+          </svg>
+        </TBtn>
+        <TBtn
           disabled={isSubmitted}
           onClick={() => editor?.chain().focus().outdent().run()}
           title="Decrease indent (Shift+Tab)"
@@ -868,21 +882,6 @@ export default function SFEditor({
             <rect x="5" y="8.2" width="8" height="1.2" rx="0.5" />
             <rect x="1" y="11.8" width="12" height="1.2" rx="0.5" />
             <path d="M1 5.5 L3.5 7 L1 8.5 Z" />
-          </svg>
-        </TBtn>
-
-        <TBtn
-          active={!!editor?.getAttributes("paragraph").textIndent || !!editor?.getAttributes("heading").textIndent}
-          disabled={isSubmitted}
-          onClick={() => editor?.chain().focus().toggleFirstLineIndent().run()}
-          title="First-line indent (0.5in)"
-          style={{ fontSize: "11px", fontWeight: 600, width: "auto", padding: "0 5px" }}
-        >
-          {/* First-line indent icon: paragraph symbol with indented first line */}
-          <svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor">
-            <rect x="5" y="2" width="10" height="1.2" rx="0.5" />
-            <rect x="1" y="6" width="14" height="1.2" rx="0.5" />
-            <rect x="1" y="10" width="14" height="1.2" rx="0.5" />
           </svg>
         </TBtn>
 

@@ -8,6 +8,8 @@ export interface KeystrokeEvent {
   type: "keystroke";
   key: string;
   position: number;
+  /** Active marks at cursor when this character was typed (e.g. bold, textStyle with color). */
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
   timestamp: number;
 }
 

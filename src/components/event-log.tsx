@@ -32,8 +32,12 @@ function formatEventTime(timestamp: number, startTime: number): string {
 
 function formatEvent(event: SFEvent): string {
   switch (event.type) {
-    case "keystroke":
-      return `Key: "${event.key}"`;
+    case "keystroke": {
+      const markStr = event.marks && event.marks.length > 0
+        ? ` [${event.marks.map((m) => m.type).join(", ")}]`
+        : "";
+      return `Key: "${event.key}"${markStr}`;
+    }
     case "backspace":
       return `Backspace: deleted "${event.deletedContent}"`;
     case "delete":

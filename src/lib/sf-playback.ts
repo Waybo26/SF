@@ -86,6 +86,21 @@ function applyEvent(state: EditorState, event: SFEvent): EditorState {
       } else if (event.key.length === 1) {
         const pos = clampPos(event.position, state.doc);
         tr = state.tr.insertText(event.key, pos);
+
+        // Apply marks to the just-inserted character if the event carries them.
+        // This ensures bold, italic, font, color, highlight, etc. are faithfully
+        // replayed — not lost between snapshots.
+        if (event.marks && event.marks.length > 0) {
+          const charFrom = pos;
+          const charTo = pos + 1;
+          for (const m of event.marks) {
+            const markType = sfSchema.marks[m.type];
+            if (markType) {
+              const mark = m.attrs ? markType.create(m.attrs) : markType.create();
+              tr = tr.addMark(charFrom, charTo, mark);
+            }
+          }
+        }
       } else {
         // Non-printable key (arrows, etc.) — no document change
         return state;
