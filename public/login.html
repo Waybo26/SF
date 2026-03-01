@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sign in as Student</title>
+    <link rel="stylesheet" href="/login.css" />
+  </head>
+  <body>
+    <main class="center">
+      <div class="card">
+
+         <div class="role-toggle" role="tablist" aria-label="Account type">
+          <button type="button" class="role-btn active" data-role="student">Student</button>
+          <button type="button" class="role-btn" data-role="teacher">Teacher</button>
+        </div>
+
+        <h1>Sign in as Student</h1>
+        <form id="loginForm" novalidate>
+          <input type="hidden" name="role" id="roleInput" value="student" />
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" inputmode="email" required />
+
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required minlength="6" />
+
+          <div class="row">
+            <label class="remember">
+              <input id="remember" name="remember" type="checkbox" />
+              Remember me
+            </label>
+            <a class="forgot" href="#">Forgot Password?</a>
+          </div>
+
+          <div id="error" class="error" aria-live="polite"></div>
+
+          <button id="submitBtn" type="submit">Sign in as Student</button>
+        </form>
+
+        <div class="alt">
+          <span>New here?</span>
+          <a href="#">Create an account</a>
+        </div>
+      </div>
+    </main>
+
+
+    <script src="/login.js"></script>
+  </body>
+</html>

@@ -1,12 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-interface Teacher {
-  id: string;
-  name: string;
-  email: string;
-}
+import { useAuth } from "@/components/auth-provider";
+import { LoginModal } from "@/components/login-modal";
 
 interface ClassSummary {
   id: string;
@@ -17,37 +13,91 @@ interface ClassSummary {
 }
 
 export default function TeacherPage() {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [selectedTeacher, setSelectedTeacher] = useState<string>("");
+  const { user, isLoggedIn, isLoading } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
+
   const [classes, setClasses] = useState<ClassSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch teachers on mount
+  // Fetch classes when logged in as teacher
   useEffect(() => {
-    fetch("/api/users?role=TEACHER")
-      .then((r) => r.json())
-      .then((data) => {
-        setTeachers(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  // Fetch classes when teacher is selected
-  useEffect(() => {
-    if (!selectedTeacher) {
-      setClasses([]);
-      return;
-    }
+    if (!user || user.role !== "TEACHER") return;
     setLoading(true);
-    fetch(`/api/classes?teacherId=${selectedTeacher}`)
+    fetch(`/api/classes?teacherId=${user.id}`)
       .then((r) => r.json())
       .then((data) => {
         setClasses(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [selectedTeacher]);
+  }, [user]);
+
+  // Loading auth state
+  if (isLoading) {
+    return (
+      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
+        <p style={{ color: "#666", fontSize: "14px" }}>Loading...</p>
+      </div>
+    );
+  }
+
+  // Not logged in
+  if (!isLoggedIn || !user) {
+    return (
+      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
+        <h1 style={{ fontSize: "24px", marginBottom: "8px" }}>
+          Teacher Dashboard
+        </h1>
+        <p style={{ color: "#666", marginBottom: "24px", fontSize: "14px" }}>
+          You need to log in as a teacher to access the dashboard.
+        </p>
+        <button
+          onClick={() => setShowLogin(true)}
+          style={{
+            padding: "10px 24px",
+            background: "#1d4ed8",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "14px",
+          }}
+        >
+          Login
+        </button>
+        <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />
+      </div>
+    );
+  }
+
+  // Logged in but not a teacher
+  if (user.role !== "TEACHER") {
+    return (
+      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
+        <h1 style={{ fontSize: "24px", marginBottom: "8px" }}>
+          Teacher Dashboard
+        </h1>
+        <p style={{ color: "#666", marginBottom: "24px", fontSize: "14px" }}>
+          You are logged in as a student. The dashboard is only available to teachers.
+        </p>
+        <a
+          href="/editor"
+          style={{
+            padding: "10px 24px",
+            background: "#1d4ed8",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "14px",
+            textDecoration: "none",
+          }}
+        >
+          Go to Student Editor
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
@@ -55,45 +105,11 @@ export default function TeacherPage() {
         Teacher Dashboard
       </h1>
       <p style={{ color: "#666", marginBottom: "24px", fontSize: "14px" }}>
-        Select your identity to view your classes and student submissions.
-        (In the full app, this would be handled by authentication.)
+        Welcome, {user.name}. View your classes and student submissions below.
       </p>
 
-      {/* Teacher selector */}
-      <div style={{ marginBottom: "32px" }}>
-        <label
-          style={{
-            display: "block",
-            marginBottom: "4px",
-            fontWeight: "bold",
-            fontSize: "14px",
-          }}
-        >
-          Select Teacher:
-        </label>
-        <select
-          value={selectedTeacher}
-          onChange={(e) => setSelectedTeacher(e.target.value)}
-          style={{
-            width: "100%",
-            maxWidth: "400px",
-            padding: "8px",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            fontSize: "14px",
-          }}
-        >
-          <option value="">Choose a teacher...</option>
-          {teachers.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name} ({t.email})
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Classes list */}
-      {selectedTeacher && !loading && classes.length === 0 && (
+      {!loading && classes.length === 0 && (
         <p style={{ color: "#999", fontSize: "14px" }}>
           No classes found. Make sure to seed the database first (go to home page).
         </p>
@@ -157,7 +173,7 @@ export default function TeacherPage() {
         </div>
       )}
 
-      {loading && selectedTeacher && (
+      {loading && (
         <p style={{ color: "#666", fontSize: "14px" }}>Loading...</p>
       )}
     </div>
