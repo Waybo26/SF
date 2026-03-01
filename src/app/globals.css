@@ -27,14 +27,15 @@
   50% { opacity: 0.5; }
 }
 
+/* Opacity-based animations for GPU compositing (much cheaper than background-color) */
 @keyframes pulseRed {
-  0%, 100% { background-color: rgba(157, 21, 53, 0.05); }
-  50% { background-color: rgba(157, 21, 53, 0.25); }
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
 }
 
 @keyframes pulseNeutral {
-  0%, 100% { background-color: rgba(0, 0, 0, 0.01); }
-  50% { background-color: rgba(0, 0, 0, 0.06); }
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 1; }
 }
 
 @keyframes gridFlow {

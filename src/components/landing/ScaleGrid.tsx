@@ -13,9 +13,9 @@ export default function ScaleGrid() {
   const [cells, setCells] = useState<Cell[]>([]);
 
   useEffect(() => {
-    // Grid configuration
-    const cols = 20;
-    const rows = 12;
+    // Reduced grid: 12 cols x 8 rows = 96 cells (down from 240)
+    const cols = 12;
+    const rows = 8;
     const totalCells = cols * rows;
     
     const newCells: Cell[] = Array.from({ length: totalCells }).map((_, i) => {
@@ -29,8 +29,8 @@ export default function ScaleGrid() {
       return {
         id: i,
         type,
-        delay: Math.random() * 5, // Random delay up to 5s
-        duration: 3 + Math.random() * 4 // Random duration 3-7s
+        delay: Math.random() * 5,
+        duration: 3 + Math.random() * 4,
       };
     });
 
@@ -38,19 +38,23 @@ export default function ScaleGrid() {
   }, []);
 
   return (
-    <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
-      <div className="w-full h-full grid grid-cols-12 md:grid-cols-[repeat(20,1fr)] gap-1 opacity-60">
+    <div
+      className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none"
+      style={{ contain: "layout style paint" }}
+    >
+      <div className="w-full h-full grid grid-cols-8 md:grid-cols-12 gap-1 opacity-60">
         {cells.map((cell) => (
           <div 
             key={cell.id}
             className={`
-              w-full h-full rounded-sm transition-all duration-1000
-              ${cell.type === "red" ? "animate-pulse-red" : ""}
-              ${cell.type === "neutral" ? "animate-pulse-neutral" : ""}
+              w-full h-full rounded-sm
+              ${cell.type === "red" ? "bg-brand-red/25 animate-pulse-red" : ""}
+              ${cell.type === "neutral" ? "bg-black/6 animate-pulse-neutral" : ""}
             `}
             style={{
               animationDelay: `${cell.delay}s`,
-              animationDuration: `${cell.duration}s`
+              animationDuration: `${cell.duration}s`,
+              willChange: cell.type !== "empty" ? "opacity" : "auto",
             }}
           ></div>
         ))}
