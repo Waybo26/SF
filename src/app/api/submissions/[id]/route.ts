@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseSFFile, htmlToPlainText, countWords } from "@/lib/sf-parser";
+import { analyzeSFFile } from "@/lib/sf-analyzer";
 
 // GET /api/submissions/[id] - Get a single submission with .sf content
 export async function GET(
@@ -104,6 +105,27 @@ export async function PUT(
     where: { id },
     data: updateData,
   });
+
+  // Run AI analysis when submission is finalized
+  if (status === "SUBMITTED" && sfFile) {
+    try {
+      const parsed = parseSFFile(sfFile);
+      const analysisResult = await analyzeSFFile(parsed);
+
+      await prisma.submission.update({
+        where: { id },
+        data: {
+          ai_detection_status: analysisResult.verdict,
+          ai_detection_details: JSON.stringify(analysisResult),
+        },
+      });
+
+      console.log(`AI Analysis for submission ${id}: ${analysisResult.verdict} (confidence: ${analysisResult.confidence})`);
+    } catch (error) {
+      // Log but don't fail the submission - AI analysis is non-blocking
+      console.error(`AI analysis failed for submission ${id}:`, error);
+    }
+  }
 
   return NextResponse.json(submission);
 }
