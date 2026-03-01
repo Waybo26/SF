@@ -93,6 +93,7 @@ model Submission {
   snapshotCount  Int       @default(0)
   createdAt      DateTime  @default(now())
   submittedAt    DateTime?
+  ai_detection_status String? // New field for AI review result
 
   // Relations
   assignment Assignment @relation(fields: [assignmentId], references: [id])
