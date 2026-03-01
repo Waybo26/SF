@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/components/auth-provider";
+import { NavAuth } from "@/components/nav-auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <AuthProvider>
         {/* Navigation */}
         <nav
           style={{
@@ -50,14 +53,14 @@ export default function RootLayout({
             SF Editor
           </a>
           <a
-            href="/editor"
+            href="/student"
             style={{
               textDecoration: "none",
               color: "#555",
               fontSize: "14px",
             }}
           >
-            Editor
+            Student
           </a>
           <a
             href="/teacher"
@@ -69,9 +72,11 @@ export default function RootLayout({
           >
             Teacher
           </a>
+          <NavAuth />
         </nav>
 
         {children}
+        </AuthProvider>
       </body>
     </html>
   );
