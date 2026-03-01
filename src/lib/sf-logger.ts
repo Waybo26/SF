@@ -17,6 +17,7 @@ export class SFLogger {
   private snapshots: SFSnapshot[] = [];
   private tabAwayTimestamp: number | null = null;
   private startTime: number;
+  private currentContent: string = "";
 
   constructor(studentId: string, assignmentId: string) {
     this.startTime = Date.now();
@@ -86,9 +87,10 @@ export class SFLogger {
     });
   }
 
-  logFormatting(mark: string, from: number, to: number): void {
+  logFormatting(mark: string, from: number, to: number, action: "add" | "remove"): void {
     this.events.push({
       type: "formatting",
+      action,
       mark,
       from,
       to,
@@ -139,12 +141,28 @@ export class SFLogger {
     this.metadata.submittedAt = new Date().toISOString();
   }
 
+  // --- Content Tracking ---
+
+  updateContent(html: string): void {
+    this.currentContent = html;
+  }
+
+  getCurrentContent(): string {
+    return this.currentContent;
+  }
+
   // --- Serialization ---
 
   serialize(): string {
+    // Auto-create a snapshot of the current content for playback engine use
+    if (this.currentContent) {
+      this.createSnapshot("Auto-save", this.currentContent);
+    }
+
     const file: SFFile = {
       version: "1.0",
       metadata: this.metadata,
+      currentContent: this.currentContent,
       snapshots: this.snapshots,
       events: this.events,
     };
@@ -199,6 +217,8 @@ export class SFLogger {
     logger.events = file.events;
     logger.snapshots = file.snapshots;
     logger.startTime = file.events[0]?.timestamp ?? Date.now();
+    // Restore currentContent — backward compat: old files may not have it
+    logger.currentContent = file.currentContent ?? "";
     return logger;
   }
 

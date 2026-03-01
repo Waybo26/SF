@@ -39,7 +39,8 @@ export const SelectionLogger = Extension.create<{ logger: SFLogger | null }>({
         const mark = stepJSON.mark?.type ?? "unknown";
         const from = stepJSON.from ?? 0;
         const to = stepJSON.to ?? 0;
-        logger.logFormatting(mark, from, to);
+        const action = stepJSON.stepType === "addMark" ? "add" : "remove";
+        logger.logFormatting(mark, from, to, action);
       }
     }
   },

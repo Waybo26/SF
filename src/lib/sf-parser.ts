@@ -35,6 +35,11 @@ export function parseSFFile(json: string): SFFile {
     throw new Error("Invalid .sf file: snapshots must be an array");
   }
 
+  // Backward compat: old .sf files may not have currentContent
+  if (typeof parsed.currentContent !== "string") {
+    parsed.currentContent = "";
+  }
+
   // Validate each event has a type and timestamp
   for (let i = 0; i < parsed.events.length; i++) {
     const event = parsed.events[i];

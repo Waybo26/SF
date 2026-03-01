@@ -1,3 +1,6 @@
+import { EditorState, type Transaction } from "@tiptap/pm/state";
+import { DOMParser as PmDOMParser, DOMSerializer, type Node as PmNode } from "@tiptap/pm/model";
+import { sfSchema } from "./sf-schema";
 import type {
   SFFile,
   SFEvent,
@@ -6,127 +9,153 @@ import type {
 } from "./sf-types";
 
 /**
- * Strips HTML tags and returns plain text.
- * Converts <br> and block-level closing tags to newlines.
+ * Parse an HTML string into a ProseMirror document using the shared schema.
+ * Requires a browser environment (uses the native DOMParser).
  */
-function htmlToPlainText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<\/div>/gi, "\n")
-    .replace(/<\/h[1-6]>/gi, "\n")
-    .replace(/<\/li>/gi, "\n")
-    .replace(/<\/blockquote>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(/\n+$/, "");
+function htmlToPmDoc(html: string): PmNode {
+  const dom = new window.DOMParser().parseFromString(
+    `<body>${html}</body>`,
+    "text/html"
+  );
+  return PmDOMParser.fromSchema(sfSchema).parse(dom.body);
 }
 
 /**
- * Convert a ProseMirror position to a plain text offset.
- *
- * ProseMirror positions count node boundary tokens (each block node
- * opening adds +1). In a simple paragraph-based document the first
- * paragraph opens at PM pos 1, so the first character is at PM pos 1.
- * Subsequent paragraphs add +2 per boundary (close + open).
- *
- * Given a plain-text string where paragraphs are separated by "\n",
- * we approximate the mapping by subtracting the accumulated structural
- * offsets.
+ * Serialize a ProseMirror document back to an HTML string.
  */
-function pmPosToTextOffset(pmPos: number, text: string): number {
-  // In ProseMirror: doc opens at 0, first <p> opens at 1.
-  // Characters inside first paragraph are at PM positions 1..len.
-  // Then </p> at len+1, next <p> at len+2, next chars start at len+2.
-  // In our plain text, paragraphs are separated by "\n".
-
-  // Walk through the text and map PM positions to text offsets.
-  let pmCursor = 1; // PM position of first char (inside first <p>)
-  let textOffset = 0;
-
-  // If there's no text, any position maps to 0
-  if (text.length === 0) return 0;
-
-  for (let i = 0; i < text.length; i++) {
-    if (pmCursor >= pmPos) {
-      return textOffset;
-    }
-    if (text[i] === "\n") {
-      // A newline in our text represents a paragraph break.
-      // In PM: current </p> = +1, next <p> = +1, so +2 total.
-      pmCursor += 2;
-      textOffset++;
-    } else {
-      pmCursor++;
-      textOffset++;
-    }
-  }
-
-  return textOffset;
+function pmDocToHtml(doc: PmNode): string {
+  const serializer = DOMSerializer.fromSchema(sfSchema);
+  const fragment = serializer.serializeFragment(doc.content);
+  const wrapper = document.createElement("div");
+  wrapper.appendChild(fragment);
+  return wrapper.innerHTML;
 }
 
 /**
- * Replay text-modifying events onto a plain text buffer.
- * Returns the resulting plain text.
+ * Create an EditorState from an HTML string (or empty doc if html is falsy).
  */
-function replayEvents(baseText: string, events: SFEvent[]): string {
-  let text = baseText;
+function stateFromHtml(html: string): EditorState {
+  const doc = html ? htmlToPmDoc(html) : sfSchema.node("doc", null, [sfSchema.node("paragraph")]);
+  return EditorState.create({ doc, schema: sfSchema });
+}
 
+/**
+ * Apply a sequence of SF events to a ProseMirror EditorState.
+ * Returns the resulting state with all text and formatting changes applied.
+ */
+function applyEvents(state: EditorState, events: SFEvent[]): EditorState {
   for (const event of events) {
-    switch (event.type) {
-      case "keystroke": {
-        const offset = pmPosToTextOffset(event.position, text);
-        const char = event.key === "Enter" ? "\n" : event.key;
-        // Only insert printable characters and Enter
-        if (event.key.length === 1 || event.key === "Enter") {
-          text = text.slice(0, offset) + char + text.slice(offset);
-        }
-        break;
-      }
-      case "backspace": {
-        const offset = pmPosToTextOffset(event.position, text);
-        if (offset > 0) {
-          text = text.slice(0, offset - 1) + text.slice(offset);
-        }
-        break;
-      }
-      case "delete": {
-        const offset = pmPosToTextOffset(event.position, text);
-        if (offset < text.length) {
-          text = text.slice(0, offset) + text.slice(offset + 1);
-        }
-        break;
-      }
-      case "paste": {
-        const offset = pmPosToTextOffset(event.position, text);
-        text = text.slice(0, offset) + event.content + text.slice(offset);
-        break;
-      }
-      case "cut": {
-        const from = pmPosToTextOffset(event.from, text);
-        const to = pmPosToTextOffset(event.to, text);
-        if (from < to) {
-          text = text.slice(0, from) + text.slice(to);
-        }
-        break;
-      }
-      // selection, formatting, tab_away, tab_return, snapshot
-      // don't modify document text — skip them.
+    try {
+      state = applyEvent(state, event);
+    } catch {
+      // If a single event fails to apply (e.g. position out of range),
+      // skip it and continue with the rest. This makes replay robust
+      // against minor position mismatches.
     }
   }
+  return state;
+}
 
-  return text;
+/**
+ * Apply a single SF event to a ProseMirror EditorState.
+ */
+function applyEvent(state: EditorState, event: SFEvent): EditorState {
+  let tr: Transaction;
+
+  switch (event.type) {
+    case "keystroke": {
+      if (event.key === "Enter") {
+        // Split the block at the current position (creates a new paragraph)
+        const pos = clampPos(event.position, state.doc);
+        tr = state.tr.split(pos);
+      } else if (event.key.length === 1) {
+        // Insert a single character
+        const pos = clampPos(event.position, state.doc);
+        tr = state.tr.insertText(event.key, pos);
+      } else {
+        // Non-printable key (e.g. arrow keys) — no document change
+        return state;
+      }
+      return state.apply(tr);
+    }
+
+    case "backspace": {
+      const pos = clampPos(event.position, state.doc);
+      const deleteLen = event.deletedContent.length || 1;
+      const from = Math.max(1, pos - deleteLen);
+      // Check if we're deleting across a node boundary (e.g. merging paragraphs)
+      if (event.deletedContent === "" || event.deletedContent === "\n") {
+        // Joining blocks: delete the boundary between pos-1 and pos
+        const joinFrom = Math.max(0, pos - 1);
+        tr = state.tr.delete(joinFrom, pos);
+      } else {
+        tr = state.tr.delete(from, pos);
+      }
+      return state.apply(tr);
+    }
+
+    case "delete": {
+      const pos = clampPos(event.position, state.doc);
+      const deleteLen = event.deletedContent.length || 1;
+      const to = Math.min(state.doc.content.size, pos + deleteLen);
+      tr = state.tr.delete(pos, to);
+      return state.apply(tr);
+    }
+
+    case "paste": {
+      const pos = clampPos(event.position, state.doc);
+      // Parse pasted content as a ProseMirror slice
+      // Paste content is plain text in our logger, insert it as text
+      tr = state.tr.insertText(event.content, pos);
+      return state.apply(tr);
+    }
+
+    case "cut": {
+      const from = clampPos(event.from, state.doc);
+      const to = clampPos(event.to, state.doc);
+      if (from < to) {
+        tr = state.tr.delete(from, to);
+        return state.apply(tr);
+      }
+      return state;
+    }
+
+    case "formatting": {
+      const from = clampPos(event.from, state.doc);
+      const to = clampPos(event.to, state.doc);
+      if (from >= to) return state;
+
+      const markType = sfSchema.marks[event.mark];
+      if (!markType) return state; // Unknown mark type, skip
+
+      if (event.action === "add") {
+        tr = state.tr.addMark(from, to, markType.create());
+      } else {
+        tr = state.tr.removeMark(from, to, markType);
+      }
+      return state.apply(tr);
+    }
+
+    // These event types don't modify the document
+    case "selection":
+    case "tab_away":
+    case "tab_return":
+    case "snapshot":
+      return state;
+  }
+}
+
+/**
+ * Clamp a ProseMirror position to be within the valid range of the document.
+ */
+function clampPos(pos: number, doc: EditorState["doc"]): number {
+  return Math.max(0, Math.min(pos, doc.content.size));
 }
 
 /**
  * SFPlaybackEngine - Reconstructs document state at any point in time
- * by replaying events from the nearest snapshot.
+ * using headless ProseMirror. Jumps to the nearest snapshot before the
+ * target timestamp and replays events forward as real PM transactions.
  */
 export class SFPlaybackEngine {
   private file: SFFile;
@@ -167,28 +196,25 @@ export class SFPlaybackEngine {
   }
 
   /**
-   * Get the document content at a specific timestamp.
+   * Get the document content (as rich HTML) at a specific timestamp.
    *
    * Strategy:
-   * 1. If there is a snapshot at exactly this timestamp, return its HTML.
-   * 2. Find the nearest snapshot before this timestamp (if any) and use its
-   *    plain-text as the base, then replay all text-modifying events between
-   *    the snapshot and the target timestamp.
-   * 3. If no snapshot exists before this time, start from an empty string
-   *    and replay all events from the beginning up to the target timestamp.
+   * 1. Find the nearest snapshot at or before the target timestamp.
+   * 2. Create a headless ProseMirror EditorState from that snapshot's HTML.
+   * 3. Replay all document-modifying events between the snapshot and the
+   *    target timestamp as real ProseMirror transactions.
+   * 4. Serialize the resulting document back to HTML.
    *
-   * Returns plain text (paragraphs separated by newlines) between snapshots,
-   * or the snapshot HTML when the timestamp lands exactly on one.
+   * If no snapshot exists before the target time, starts from an empty doc.
    */
   getStateAtTime(timestamp: number): string {
-    // Sort snapshots by timestamp descending to find nearest before target
+    // Find the nearest snapshot at or before the target timestamp
     const snapshotsBefore = this.file.snapshots
       .filter((s) => s.timestamp <= timestamp)
       .sort((a, b) => b.timestamp - a.timestamp);
 
-    // Determine base text and the start time for event replay
-    let baseText = "";
-    let replayFrom = 0; // replay events with timestamp > replayFrom
+    let baseHtml = "";
+    let replayFrom = 0;
 
     if (snapshotsBefore.length > 0) {
       const nearest = snapshotsBefore[0];
@@ -198,31 +224,25 @@ export class SFPlaybackEngine {
         return nearest.content;
       }
 
-      baseText = htmlToPlainText(nearest.content);
+      baseHtml = nearest.content;
       replayFrom = nearest.timestamp;
     }
 
-    // Collect text-modifying events between the base and the target timestamp
+    // Collect events between the base snapshot and target timestamp
     const eventsToReplay = this.sortedEvents.filter(
       (e) => e.timestamp > replayFrom && e.timestamp <= timestamp
     );
 
-    // If there are no events to replay, return what we have
+    // If there are no events to replay, return the snapshot HTML (or empty)
     if (eventsToReplay.length === 0) {
-      // Return the snapshot HTML if we had one, otherwise empty
-      if (snapshotsBefore.length > 0) {
-        return snapshotsBefore[0].content;
-      }
-      return "";
+      return baseHtml;
     }
 
-    // Replay events onto the base text
-    const reconstructed = replayEvents(baseText, eventsToReplay);
+    // Create a headless ProseMirror state from the base HTML and replay events
+    const baseState = stateFromHtml(baseHtml);
+    const finalState = applyEvents(baseState, eventsToReplay);
 
-    // Convert plain text back to simple HTML paragraphs for rendering
-    if (!reconstructed) return "";
-    const paragraphs = reconstructed.split("\n");
-    return paragraphs.map((p) => `<p>${p || "<br>"}</p>`).join("");
+    return pmDocToHtml(finalState.doc);
   }
 
   /**

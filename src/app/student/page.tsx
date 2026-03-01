@@ -2,7 +2,7 @@
 
 import { Manrope } from "next/font/google";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { LoginModal } from "@/components/login-modal";
 
@@ -121,7 +121,8 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("due-asc");
 
-  useEffect(() => {
+  // Fetch classes and assignment data
+  const fetchClasses = useCallback(() => {
     if (!user || user.role !== "STUDENT") return;
     setLoading(true);
     fetch(`/api/classes?studentId=${user.id}`)
@@ -132,6 +133,25 @@ export default function StudentDashboard() {
       })
       .catch(() => setLoading(false));
   }, [user]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
+
+  // Refetch when the page becomes visible again (e.g. after navigating
+  // back from the write page) so dashboard always shows current status.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchClasses();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fetchClasses]);
 
   const assignmentQueue = useMemo<AssignmentQueueItem[]>(() => {
     return classes.flatMap((cls) =>

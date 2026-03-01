@@ -50,6 +50,7 @@ export interface SelectionEvent {
 
 export interface FormattingEvent {
   type: "formatting";
+  action: "add" | "remove";
   mark: string; // "bold", "italic", "underline", "heading", etc.
   from: number;
   to: number;
@@ -109,6 +110,7 @@ export interface SFMetadata {
 export interface SFFile {
   version: string;
   metadata: SFMetadata;
+  currentContent: string; // Latest editor HTML at time of save
   snapshots: SFSnapshot[];
   events: SFEvent[];
 }

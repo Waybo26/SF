@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import SFEditor from "@/components/sf-editor";
 import { useAuth } from "@/components/auth-provider";
@@ -27,19 +27,34 @@ export default function StudentWritePage() {
   const [editorReady, setEditorReady] = useState(false);
   const [status, setStatus] = useState<string>("Loading...");
   const [loading, setLoading] = useState(true);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Load class data and set up the submission
+  // Ref so callbacks always see the latest submissionId without re-creating.
+  const submissionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    submissionIdRef.current = submissionId;
+  }, [submissionId]);
+
+  // Load class data and check for an existing submission.
+  // No submission is created here — creation is deferred to the first
+  // auto-save or manual save so that merely opening the page does not
+  // mark the assignment as "In Progress".
   useEffect(() => {
     if (!user || user.role !== "STUDENT" || !classId || !assignmentId) return;
+
+    const controller = new AbortController();
+    const signal = controller.signal;
 
     async function init() {
       try {
         // Fetch class detail (student-scoped) to get assignment info
         const classRes = await fetch(
-          `/api/classes/${classId}?studentId=${user!.id}`
+          `/api/classes/${classId}?studentId=${user!.id}`,
+          { signal }
         );
         if (!classRes.ok) throw new Error("Class not found");
         const classData = await classRes.json();
+        if (signal.aborted) return;
         setClassName(classData.name);
 
         const assignmentData = classData.assignments.find(
@@ -50,55 +65,94 @@ export default function StudentWritePage() {
 
         // Check for existing submission
         const listRes = await fetch(
-          `/api/submissions?assignmentId=${assignmentId}&studentId=${user!.id}`
+          `/api/submissions?assignmentId=${assignmentId}&studentId=${user!.id}`,
+          { signal }
         );
         const existing = await listRes.json();
+        if (signal.aborted) return;
 
         if (existing.length > 0) {
           const sub = existing[0];
           setSubmissionId(sub.id);
 
+          // If already submitted, mark as non-editable
+          if (sub.status === "SUBMITTED" || sub.status === "GRADED") {
+            setIsSubmitted(true);
+          }
+
           // Load full submission content
-          const fullRes = await fetch(`/api/submissions/${sub.id}`);
+          const fullRes = await fetch(`/api/submissions/${sub.id}`, { signal });
           const full = await fullRes.json();
+          if (signal.aborted) return;
           if (full.sfFile) {
             setInitialSfContent(full.sfFile);
           }
           setStatus(`Resuming (${sub.status})`);
         } else {
-          // Create new submission
-          const createRes = await fetch("/api/submissions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              assignmentId,
-              studentId: user!.id,
-            }),
-          });
-          const created = await createRes.json();
-          setSubmissionId(created.id);
-          setStatus("New submission created");
+          // No existing submission — editor will start fresh.
+          // Submission record is created on first save (see ensureSubmission).
+          setStatus("Ready");
         }
 
         setEditorReady(true);
       } catch (err) {
+        if (signal.aborted) return;
         setStatus(
           err instanceof Error ? err.message : "Failed to load assignment"
         );
       } finally {
-        setLoading(false);
+        if (!signal.aborted) setLoading(false);
       }
     }
 
     init();
+
+    return () => controller.abort();
   }, [user, classId, assignmentId]);
 
-  // Auto-save handler
+  // Create the submission record on-demand (first save or submit).
+  // Returns the submission ID, or null if creation failed.
+  // Handles 409 (already exists) by extracting the existing ID.
+  const ensureSubmission = useCallback(async (): Promise<string | null> => {
+    // Already have one
+    if (submissionIdRef.current) return submissionIdRef.current;
+
+    try {
+      const res = await fetch("/api/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignmentId, studentId: user!.id }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setSubmissionId(data.id);
+        submissionIdRef.current = data.id;
+        return data.id;
+      }
+
+      // 409 — submission already exists (race condition / StrictMode double-fire)
+      if (res.status === 409 && data.id) {
+        setSubmissionId(data.id);
+        submissionIdRef.current = data.id;
+        return data.id;
+      }
+
+      console.error("Failed to create submission:", data.error);
+      return null;
+    } catch (err) {
+      console.error("Failed to create submission:", err);
+      return null;
+    }
+  }, [assignmentId, user]);
+
+  // Auto-save handler — creates the submission record on first call
   const handleSave = useCallback(
     async (sfJson: string) => {
-      if (!submissionId) return;
+      const id = await ensureSubmission();
+      if (!id) return;
       try {
-        await fetch(`/api/submissions/${submissionId}`, {
+        await fetch(`/api/submissions/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sfFile: sfJson }),
@@ -107,26 +161,31 @@ export default function StudentWritePage() {
         console.error("Auto-save failed:", err);
       }
     },
-    [submissionId]
+    [ensureSubmission]
   );
 
-  // Submit handler
+  // Submit handler — creates the submission record if needed
   const handleSubmit = useCallback(
     async (sfJson: string) => {
-      if (!submissionId) return;
+      const id = await ensureSubmission();
+      if (!id) {
+        setStatus("Submit failed — could not create submission");
+        return;
+      }
       try {
-        await fetch(`/api/submissions/${submissionId}`, {
+        await fetch(`/api/submissions/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sfFile: sfJson, status: "SUBMITTED" }),
         });
+        setIsSubmitted(true);
         setStatus("Submitted successfully!");
       } catch (err) {
         console.error("Submit failed:", err);
         setStatus("Submit failed");
       }
     },
-    [submissionId]
+    [ensureSubmission]
   );
 
   // Auth loading
@@ -257,6 +316,7 @@ export default function StudentWritePage() {
         assignmentId={assignmentId}
         submissionId={submissionId ?? undefined}
         initialContent={initialSfContent ?? undefined}
+        initialSubmitted={isSubmitted}
         onSave={handleSave}
         onSubmit={handleSubmit}
       />

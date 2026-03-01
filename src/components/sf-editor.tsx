@@ -16,6 +16,7 @@ interface SFEditorProps {
   assignmentId: string;
   submissionId?: string;
   initialContent?: string;
+  initialSubmitted?: boolean;
   onSave?: (sfJson: string) => void;
   onSubmit?: (sfJson: string) => void;
 }
@@ -25,6 +26,7 @@ export default function SFEditor({
   assignmentId,
   submissionId,
   initialContent,
+  initialSubmitted = false,
   onSave,
   onSubmit,
 }: SFEditorProps) {
@@ -35,7 +37,7 @@ export default function SFEditor({
   const [snapshotLabel, setSnapshotLabel] = useState("");
   const [showSnapshotInput, setShowSnapshotInput] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(initialSubmitted);
 
   // Initialize logger
   if (!loggerRef.current) {
@@ -64,10 +66,12 @@ export default function SFEditor({
       PasteLogger.configure({ logger }),
       SelectionLogger.configure({ logger }),
     ],
-    content: "",
+    content: loggerRef.current?.getCurrentContent() || "",
     editable: !isSubmitted,
     onUpdate: ({ editor }) => {
-      const text = htmlToPlainText(editor.getHTML());
+      const html = editor.getHTML();
+      logger.updateContent(html);
+      const text = htmlToPlainText(html);
       setWordCount(countWords(text));
       setEventCount(logger.getEventCount());
     },
@@ -102,14 +106,16 @@ export default function SFEditor({
   useEffect(() => {
     if (!onSave) return;
     const interval = setInterval(() => {
-      if (!isSubmitted) {
+      if (!isSubmitted && editor) {
+        // Ensure latest content is captured before serializing
+        logger.updateContent(editor.getHTML());
         const sfJson = logger.serialize();
         onSave(sfJson);
         setLastSaved(new Date().toLocaleTimeString());
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [logger, onSave, isSubmitted]);
+  }, [logger, onSave, isSubmitted, editor]);
 
   // Save snapshot
   const handleSaveSnapshot = useCallback(() => {
@@ -129,8 +135,9 @@ export default function SFEditor({
     );
     if (!confirmed) return;
 
-    // Create a final snapshot
+    // Create a final snapshot and update currentContent
     const html = editor.getHTML();
+    logger.updateContent(html);
     logger.createSnapshot("Final Submission", html);
     logger.markSubmitted();
 
@@ -144,14 +151,18 @@ export default function SFEditor({
 
   // Manual save
   const handleManualSave = useCallback(() => {
-    if (!onSave) return;
+    if (!onSave || !editor) return;
+    logger.updateContent(editor.getHTML());
     const sfJson = logger.serialize();
     onSave(sfJson);
     setLastSaved(new Date().toLocaleTimeString());
-  }, [logger, onSave]);
+  }, [logger, onSave, editor]);
 
   // Download .sf file
   const handleDownload = useCallback(() => {
+    if (editor) {
+      logger.updateContent(editor.getHTML());
+    }
     const sfJson = logger.serialize();
     const blob = new Blob([sfJson], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -160,7 +171,7 @@ export default function SFEditor({
     a.download = `submission-${assignmentId}.sf`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [logger, assignmentId]);
+  }, [logger, assignmentId, editor]);
 
   // Format elapsed time
   const formatTime = (seconds: number) => {

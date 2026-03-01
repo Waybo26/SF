@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { LoginModal } from "@/components/login-modal";
@@ -102,7 +102,7 @@ export default function StudentClassPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchClassData = useCallback(() => {
     if (!user || user.role !== "STUDENT" || !classId) return;
     setLoading(true);
     fetch(`/api/classes/${classId}?studentId=${user.id}`)
@@ -119,6 +119,23 @@ export default function StudentClassPage() {
         setLoading(false);
       });
   }, [user, classId]);
+
+  useEffect(() => {
+    fetchClassData();
+  }, [fetchClassData]);
+
+  // Refetch when the page becomes visible again so status is always current.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchClassData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [fetchClassData]);
 
   // Auth loading
   if (authLoading) {
