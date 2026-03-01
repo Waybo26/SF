@@ -20,6 +20,8 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+  const [snapshotSortAsc, setSnapshotSortAsc] = useState(true);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // ── Page pagination ──────────────────────────────────────────────
@@ -29,14 +31,16 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
   const [numPages, setNumPages] = useState(1);
   const viewerContentRef = useRef<HTMLDivElement>(null);
 
-  // Watch the content height and recalculate page count
+  // Watch the hidden measuring div and recalculate page count
   useEffect(() => {
     const el = viewerContentRef.current;
     if (!el) return;
 
+    const PADDING_PX = 2 * 96; // 1in top + 1in bottom padding in measuring div
+
     const recalc = () => {
-      const h = el.scrollHeight;
-      const pages = Math.max(1, Math.ceil(h / PAGE_CONTENT_PX));
+      const contentH = Math.max(0, el.scrollHeight - PADDING_PX);
+      const pages = Math.max(1, Math.ceil(contentH / PAGE_CONTENT_PX));
       setNumPages(pages);
     };
 
@@ -53,9 +57,6 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
       mo.disconnect();
     };
   }, [PAGE_CONTENT_PX]);
-
-  // Total height of the page card: N pages + (N-1) gaps
-  const viewerPageCardHeight = numPages * PAGE_HEIGHT_PX + (numPages - 1) * PAGE_GAP_PX;
 
   // Load .sf content
   const loadContent = useCallback((json: string) => {
@@ -262,6 +263,23 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
             >
               Stats {statsOpen ? "\u25B2" : "\u25BC"}
             </button>
+            {snapshots.length > 0 && (
+              <button
+                onClick={() => setSnapshotsOpen(!snapshotsOpen)}
+                style={{
+                  padding: "4px 10px",
+                  background: snapshotsOpen ? "#fef3c7" : "#f5f5f5",
+                  border: `1px solid ${snapshotsOpen ? "#f59e0b" : "#ccc"}`,
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  color: snapshotsOpen ? "#92400e" : "#333",
+                  fontWeight: snapshotsOpen ? 600 : 400,
+                }}
+              >
+                Snapshots ({snapshots.length}) {snapshotsOpen ? "\u25B2" : "\u25BC"}
+              </button>
+            )}
             <label
               style={{
                 padding: "4px 10px",
@@ -345,6 +363,140 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
                 </div>
               </div>
             ))}
+           </div>
+        )}
+
+        {/* Collapsible Snapshot Panel */}
+        {snapshotsOpen && snapshots.length > 0 && (
+          <div
+            style={{
+              marginBottom: "6px",
+              border: "1px solid #e5e7eb",
+              borderRadius: "4px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "4px 8px",
+                background: "#fefce8",
+                borderBottom: "1px solid #e5e7eb",
+              }}
+            >
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "#92400e" }}>
+                Snapshots
+              </span>
+              <button
+                onClick={() => setSnapshotSortAsc(!snapshotSortAsc)}
+                style={{
+                  padding: "2px 6px",
+                  background: "transparent",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "3px",
+                  cursor: "pointer",
+                  fontSize: "10px",
+                  color: "#666",
+                }}
+              >
+                Sort: {snapshotSortAsc ? "Oldest first" : "Newest first"}
+              </button>
+            </div>
+            <div style={{ maxHeight: "140px", overflowY: "auto" }}>
+              {[...snapshots]
+                .sort((a, b) =>
+                  snapshotSortAsc
+                    ? a.timestamp - b.timestamp
+                    : b.timestamp - a.timestamp
+                )
+                .map((snapshot) => {
+                  const isAuto = snapshot.label.toLowerCase().startsWith("auto");
+                  const date = new Date(snapshot.timestamp);
+                  return (
+                    <div
+                      key={snapshot.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "4px 8px",
+                        borderBottom: "1px solid #f3f4f6",
+                        background:
+                          selectedSnapshot === snapshot.id
+                            ? "#eff6ff"
+                            : "white",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "9px",
+                          padding: "1px 4px",
+                          borderRadius: "2px",
+                          background: isAuto ? "#f3f4f6" : "#dbeafe",
+                          color: isAuto ? "#6b7280" : "#1e40af",
+                          fontWeight: 500,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isAuto ? "AUTO" : "MANUAL"}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          color: "#111",
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {snapshot.label}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          color: "#9ca3af",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {date.toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}{" "}
+                        {date.toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <button
+                        onClick={() => jumpToSnapshot(snapshot.id)}
+                        style={{
+                          padding: "2px 8px",
+                          background:
+                            selectedSnapshot === snapshot.id
+                              ? "#3b82f6"
+                              : "#f5f5f5",
+                          color:
+                            selectedSnapshot === snapshot.id
+                              ? "white"
+                              : "#555",
+                          border: `1px solid ${selectedSnapshot === snapshot.id ? "#3b82f6" : "#ccc"}`,
+                          borderRadius: "3px",
+                          cursor: "pointer",
+                          fontSize: "11px",
+                          fontWeight: 500,
+                          flexShrink: 0,
+                        }}
+                      >
+                        Jump
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         )}
 
@@ -418,47 +570,6 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
               {speed}x
             </button>
           ))}
-
-          {/* Snapshot jump buttons (inline, compact) */}
-          {snapshots.length > 0 && (
-            <>
-              <div
-                style={{
-                  width: "1px",
-                  height: "18px",
-                  background: "#d1d5db",
-                  margin: "0 4px",
-                }}
-              />
-              <span style={{ fontSize: "11px", color: "#888" }}>
-                Snapshots:
-              </span>
-              {snapshots.map((snapshot) => (
-                <button
-                  key={snapshot.id}
-                  onClick={() => jumpToSnapshot(snapshot.id)}
-                  title={`${snapshot.label} (${new Date(snapshot.timestamp).toLocaleTimeString()})`}
-                  style={{
-                    padding: "3px 8px",
-                    background:
-                      selectedSnapshot === snapshot.id ? "#3b82f6" : "#f5f5f5",
-                    color:
-                      selectedSnapshot === snapshot.id ? "white" : "#555",
-                    border: `1px solid ${selectedSnapshot === snapshot.id ? "#3b82f6" : "#ccc"}`,
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontSize: "11px",
-                    maxWidth: "120px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {snapshot.label}
-                </button>
-              ))}
-            </>
-          )}
         </div>
       </div>
 
@@ -493,70 +604,94 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
             Document Preview
           </div>
           <div
-            style={{
-              background: "#e8eaed",
-              borderRadius: "6px",
-              border: "1px solid #e5e7eb",
-              flex: 1,
-              overflowY: "auto",
-              padding: "20px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
+              style={{
+                background: "#e8eaed",
+                borderRadius: "6px",
+                border: "1px solid #e5e7eb",
+                flex: 1,
+                overflowY: "auto",
+                padding: "20px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: `${PAGE_GAP_PX}px`,
+              }}
+            >
+            {/* Hidden measuring div — off-screen, used to calculate content height */}
             <div
+              ref={viewerContentRef}
               className="sf-viewer-page"
               style={{
+                position: "absolute",
+                left: "-9999px",
+                top: 0,
                 width: "8.5in",
-                height: `${viewerPageCardHeight}px`,
-                padding: "0 1in",
-                backgroundColor: "transparent",
-                backgroundImage: `repeating-linear-gradient(to bottom, white 0px, white ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX + PAGE_GAP_PX}px)`,
-                backgroundPosition: "top",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
+                padding: "1in",
                 fontSize: "12pt",
                 lineHeight: "1.5",
                 fontFamily: '"Times New Roman", Times, serif',
                 color: "#000",
                 boxSizing: "border-box",
-                position: "relative",
+                visibility: "hidden",
               }}
-            >
-              {/* Page break overlay — thin line at each boundary */}
-              <div style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                pointerEvents: "none",
-                zIndex: 1,
-                backgroundImage: `repeating-linear-gradient(to bottom, transparent 0px, transparent ${PAGE_HEIGHT_PX - 1}px, #c0c4c8 ${PAGE_HEIGHT_PX - 1}px, #c0c4c8 ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX + PAGE_GAP_PX}px)`,
-                backgroundPosition: "top",
-              }} />
-              {/* Content wrapper with page margins */}
+              dangerouslySetInnerHTML={{ __html: currentContent }}
+            />
+
+            {/* Discrete clipped pages */}
+            {currentContent ? (
+              Array.from({ length: numPages }, (_, i) => (
+                <div
+                  key={`page-${i}`}
+                  className="sf-viewer-page"
+                  style={{
+                    width: "8.5in",
+                    height: `${PAGE_HEIGHT_PX}px`,
+                    background: "white",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
+                    borderRadius: "2px",
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    position: "relative",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      padding: "1in",
+                      fontSize: "12pt",
+                      lineHeight: "1.5",
+                      fontFamily: '"Times New Roman", Times, serif',
+                      color: "#000",
+                      boxSizing: "border-box",
+                      transform: `translateY(-${i * PAGE_CONTENT_PX}px)`,
+                    }}
+                    dangerouslySetInnerHTML={{ __html: currentContent }}
+                  />
+                </div>
+              ))
+            ) : (
               <div
-                ref={viewerContentRef}
                 style={{
-                  position: "relative",
-                  zIndex: 3,
-                  paddingTop: "1in",
-                  paddingBottom: "1in",
-                  minHeight: `${PAGE_CONTENT_PX}px`,
-                  width: "100%",
+                  width: "8.5in",
+                  height: `${PAGE_HEIGHT_PX}px`,
+                  background: "white",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
+                  borderRadius: "2px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
-                {currentContent ? (
-                  <div dangerouslySetInnerHTML={{ __html: currentContent }} />
-                ) : (
-                  <div style={{ color: "#999", fontStyle: "italic" }}>
-                    No content at this position. Move the timeline to see the
-                    document.
-                  </div>
-                )}
+                <div style={{ color: "#999", fontStyle: "italic" }}>
+                  No content at this position. Move the timeline to see the
+                  document.
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 

@@ -267,10 +267,12 @@ export default function SFEditor({
     const el = contentRef.current;
     if (!el) return;
 
+    const PADDING_PX = 96 + 96; // 1in top + 1in bottom padding on the content wrapper
+
     const recalc = () => {
-      // scrollHeight of the content wrapper (inside 1in padding)
-      const h = el.scrollHeight;
-      const pages = Math.max(1, Math.ceil(h / PAGE_CONTENT_PX));
+      // scrollHeight includes padding; subtract it to get actual content height
+      const contentH = Math.max(0, el.scrollHeight - PADDING_PX);
+      const pages = Math.max(1, Math.ceil(contentH / PAGE_CONTENT_PX));
       setNumPages(pages);
     };
 
@@ -289,8 +291,8 @@ export default function SFEditor({
     };
   }, [PAGE_CONTENT_PX]);
 
-  // Total height of the page card: N pages + (N-1) gaps
-  const pageCardHeight = numPages * PAGE_HEIGHT_PX + (numPages - 1) * PAGE_GAP_PX;
+  // Total height of the page area: N page blocks + (N-1) gaps between them
+  const totalPagesHeight = numPages * PAGE_HEIGHT_PX + (numPages - 1) * PAGE_GAP_PX;
 
   // Color picker popover state
   const [showTextColor, setShowTextColor] = useState(false);
@@ -1064,7 +1066,7 @@ export default function SFEditor({
         </TBtn>
       </div>
 
-      {/* ── Editor Area (Page Card) ──────────────────────────── */}
+      {/* ── Editor Area (Decorative Page Blocks) ────────────── */}
       <div
         style={{
           padding: "30px 0 60px",
@@ -1097,49 +1099,50 @@ export default function SFEditor({
             {toast}
           </div>
         )}
+
+        {/* Page container — relative wrapper for page blocks + content */}
         <div
-          className="sf-editor-page"
           onClick={() => editor?.commands.focus()}
           style={{
-            width: "8.5in",
-            height: `${pageCardHeight}px`,
-            padding: "0 1in",
-            cursor: "text",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
-            fontSize: "12pt",
-            lineHeight: "1.5",
-            fontFamily: '"Times New Roman", Times, serif',
-            color: "#000",
-            boxSizing: "border-box",
             position: "relative",
-            /* White background repeats every page-height with a gap between */
-            backgroundColor: "transparent",
-            backgroundImage: `repeating-linear-gradient(to bottom, white 0px, white ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX + PAGE_GAP_PX}px)`,
-            backgroundPosition: "top",
+            width: "8.5in",
+            minHeight: `${PAGE_HEIGHT_PX}px`,
+            cursor: "text",
+            flexShrink: 0,
           }}
         >
-          {/* Page break overlay — thin line at each boundary */}
-          <div style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            pointerEvents: "none",
-            zIndex: 1,
-            backgroundImage: `repeating-linear-gradient(to bottom, transparent 0px, transparent ${PAGE_HEIGHT_PX - 1}px, #c0c4c8 ${PAGE_HEIGHT_PX - 1}px, #c0c4c8 ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX + PAGE_GAP_PX}px)`,
-            backgroundPosition: "top",
-          }} />
-          {/* Content wrapper — 1in top padding per page via paddingTop,
-              the content flows continuously. */}
+          {/* Decorative page blocks — white "paper" cards behind content */}
+          {Array.from({ length: numPages }, (_, i) => (
+            <div
+              key={`page-${i}`}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: `${i * (PAGE_HEIGHT_PX + PAGE_GAP_PX)}px`,
+                height: `${PAGE_HEIGHT_PX}px`,
+                background: "white",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
+                borderRadius: "2px",
+                zIndex: 0,
+              }}
+            />
+          ))}
+
+          {/* Content layer — flows in normal document flow, positioned
+              above the decorative page blocks. The page blocks provide
+              visual "paper" context while content flows continuously. */}
           <div
             ref={contentRef}
             style={{
               position: "relative",
-              zIndex: 3,
-              paddingTop: "1in",
-              paddingBottom: "1in",
-              minHeight: `${PAGE_CONTENT_PX}px`,
+              padding: "1in",
+              fontSize: "12pt",
+              lineHeight: "1.5",
+              fontFamily: '"Times New Roman", Times, serif',
+              color: "#000",
+              zIndex: 2,
+              minHeight: `${totalPagesHeight}px`,
             }}
           >
             <EditorContent editor={editor} />
