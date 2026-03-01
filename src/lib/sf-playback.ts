@@ -129,10 +129,33 @@ function applyEvent(state: EditorState, event: SFEvent): EditorState {
       if (!markType) return state; // Unknown mark type, skip
 
       if (event.action === "add") {
+        // For textStyle marks, we may need to pass attributes.
+        // The mark name in the event is the top-level mark name (e.g. "textStyle").
+        // However, the specific attribute (color, fontFamily, fontSize) is set
+        // by TipTap on the mark itself — during replay we just add/remove the mark.
         tr = state.tr.addMark(from, to, markType.create());
       } else {
         tr = state.tr.removeMark(from, to, markType);
       }
+      return state.apply(tr);
+    }
+
+    case "paragraph_format": {
+      // Update a paragraph/heading node's attributes (textAlign, lineHeight, indent)
+      const pos = clampPos(event.position, state.doc);
+      const node = state.doc.nodeAt(pos);
+      if (!node) return state;
+
+      // Only apply to block nodes that support these attributes
+      const nodeType = node.type;
+      if (nodeType.name !== "paragraph" && nodeType.name !== "heading") {
+        return state;
+      }
+
+      tr = state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        [event.attr]: event.value,
+      });
       return state.apply(tr);
     }
 

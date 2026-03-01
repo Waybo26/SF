@@ -4,12 +4,58 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
+import TextAlign from "@tiptap/extension-text-align";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import FontFamily from "@tiptap/extension-font-family";
+import Highlight from "@tiptap/extension-highlight";
+import { FontSize } from "@/extensions/font-size";
+import { LineSpacing } from "@/extensions/line-spacing";
+import { Indent } from "@/extensions/indent";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SFLogger } from "@/lib/sf-logger";
 import { KeystrokeLogger } from "@/extensions/keystroke-logger";
 import { PasteLogger } from "@/extensions/paste-logger";
 import { SelectionLogger } from "@/extensions/selection-logger";
 import { countWords, htmlToPlainText } from "@/lib/sf-parser";
+
+// ── Constants ────────────────────────────────────────────────────────
+
+const FONT_FAMILIES = [
+  { label: "Times New Roman", value: "Times New Roman" },
+  { label: "Arial", value: "Arial" },
+  { label: "Georgia", value: "Georgia" },
+  { label: "Courier New", value: "Courier New" },
+  { label: "Helvetica", value: "Helvetica" },
+];
+
+const FONT_SIZES = [
+  "8pt", "9pt", "10pt", "11pt", "12pt", "14pt", "16pt",
+  "18pt", "20pt", "24pt", "28pt", "36pt", "48pt",
+];
+
+const LINE_SPACINGS = [
+  { label: "1.0", value: "1" },
+  { label: "1.15", value: "1.15" },
+  { label: "1.5", value: "1.5" },
+  { label: "2.0", value: "2" },
+  { label: "2.5", value: "2.5" },
+  { label: "3.0", value: "3" },
+];
+
+const TEXT_COLORS = [
+  "#000000", "#434343", "#666666", "#999999", "#cccccc",
+  "#c0392b", "#e74c3c", "#e67e22", "#f39c12", "#f1c40f",
+  "#27ae60", "#2ecc71", "#1abc9c", "#2980b9", "#3498db",
+  "#8e44ad", "#9b59b6", "#2c3e50", "#7f8c8d", "#95a5a6",
+];
+
+const HIGHLIGHT_COLORS = [
+  "#fef08a", "#bbf7d0", "#bfdbfe", "#e9d5ff", "#fecaca",
+  "#fed7aa", "#d9f99d", "#a5f3fc", "#fbcfe8", "#e2e8f0",
+];
+
+// ── Props ────────────────────────────────────────────────────────────
 
 interface SFEditorProps {
   studentId: string;
@@ -20,6 +66,165 @@ interface SFEditorProps {
   onSave?: (sfJson: string) => void;
   onSubmit?: (sfJson: string) => void;
 }
+
+// ── Toolbar Button ───────────────────────────────────────────────────
+
+function TBtn({
+  active,
+  disabled,
+  onClick,
+  title,
+  children,
+  style,
+}: {
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "28px",
+        height: "28px",
+        borderRadius: "4px",
+        border: "none",
+        cursor: disabled ? "not-allowed" : "pointer",
+        background: active ? "#d3e3fd" : "transparent",
+        color: active ? "#1a73e8" : "#444",
+        fontSize: "13px",
+        fontWeight: active ? 700 : 400,
+        opacity: disabled ? 0.4 : 1,
+        flexShrink: 0,
+        transition: "background 0.1s",
+        ...style,
+      }}
+      onMouseEnter={(e) => {
+        if (!active && !disabled)
+          e.currentTarget.style.background = "#f1f3f4";
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = "transparent";
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Vertical separator line between toolbar groups */
+function Sep() {
+  return (
+    <div
+      style={{
+        width: "1px",
+        height: "20px",
+        background: "#dadce0",
+        margin: "0 4px",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+// ── Color Picker Popover ─────────────────────────────────────────────
+
+function ColorPicker({
+  colors,
+  activeColor,
+  onSelect,
+  onClose,
+  label,
+}: {
+  colors: string[];
+  activeColor: string | null;
+  onSelect: (color: string) => void;
+  onClose: () => void;
+  label: string;
+}) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: "100%",
+        left: 0,
+        marginTop: "4px",
+        background: "white",
+        border: "1px solid #dadce0",
+        borderRadius: "8px",
+        padding: "8px",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+        zIndex: 100,
+        width: "180px",
+      }}
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      <div
+        style={{
+          fontSize: "11px",
+          color: "#666",
+          marginBottom: "6px",
+          fontWeight: 500,
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "3px" }}>
+        {colors.map((color) => (
+          <button
+            key={color}
+            type="button"
+            onClick={() => {
+              onSelect(color);
+              onClose();
+            }}
+            style={{
+              width: "20px",
+              height: "20px",
+              borderRadius: "3px",
+              border:
+                activeColor === color
+                  ? "2px solid #1a73e8"
+                  : "1px solid #dadce0",
+              background: color,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          />
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          onSelect("");
+          onClose();
+        }}
+        style={{
+          marginTop: "6px",
+          fontSize: "11px",
+          color: "#1a73e8",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: "2px 0",
+        }}
+      >
+        Remove
+      </button>
+    </div>
+  );
+}
+
+// ── Main Editor Component ────────────────────────────────────────────
 
 export default function SFEditor({
   studentId,
@@ -38,6 +243,43 @@ export default function SFEditor({
   const [showSnapshotInput, setShowSnapshotInput] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(initialSubmitted);
+
+  // Color picker popover state
+  const [showTextColor, setShowTextColor] = useState(false);
+  const [showHighlight, setShowHighlight] = useState(false);
+  const [showLineSpacing, setShowLineSpacing] = useState(false);
+  const textColorRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
+  const lineSpacingRef = useRef<HTMLDivElement>(null);
+
+  // Close popovers on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        showTextColor &&
+        textColorRef.current &&
+        !textColorRef.current.contains(e.target as Node)
+      ) {
+        setShowTextColor(false);
+      }
+      if (
+        showHighlight &&
+        highlightRef.current &&
+        !highlightRef.current.contains(e.target as Node)
+      ) {
+        setShowHighlight(false);
+      }
+      if (
+        showLineSpacing &&
+        lineSpacingRef.current &&
+        !lineSpacingRef.current.contains(e.target as Node)
+      ) {
+        setShowLineSpacing(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showTextColor, showHighlight, showLineSpacing]);
 
   // Initialize logger
   if (!loggerRef.current) {
@@ -62,6 +304,16 @@ export default function SFEditor({
       Placeholder.configure({
         placeholder: "Start writing your essay here...",
       }),
+      TextStyle,
+      Color,
+      FontFamily,
+      FontSize,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({
+        types: ["heading", "paragraph"],
+      }),
+      LineSpacing,
+      Indent,
       KeystrokeLogger.configure({ logger }),
       PasteLogger.configure({ logger }),
       SelectionLogger.configure({ logger }),
@@ -107,7 +359,6 @@ export default function SFEditor({
     if (!onSave) return;
     const interval = setInterval(() => {
       if (!isSubmitted && editor) {
-        // Ensure latest content is captured before serializing
         logger.updateContent(editor.getHTML());
         const sfJson = logger.serialize();
         onSave(sfJson);
@@ -135,7 +386,6 @@ export default function SFEditor({
     );
     if (!confirmed) return;
 
-    // Create a final snapshot and update currentContent
     const html = editor.getHTML();
     logger.updateContent(html);
     logger.createSnapshot("Final Submission", html);
@@ -183,160 +433,561 @@ export default function SFEditor({
     return `${s}s`;
   };
 
+  // ── Helpers to read current formatting state from editor ──────────
+
+  const currentFontFamily =
+    editor?.getAttributes("textStyle").fontFamily || "";
+  const currentFontSize =
+    editor?.getAttributes("textStyle").fontSize || "";
+  const currentTextColor =
+    editor?.getAttributes("textStyle").color || "";
+  const currentHighlight =
+    editor?.getAttributes("highlight").color || "";
+
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
-      {/* Toolbar */}
+    <div
+      className="sf-editor-root"
+      style={{
+        maxWidth: "900px",
+        margin: "0 auto",
+        padding: "20px",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      }}
+    >
+      {/* ── Toolbar ─────────────────────────────────────────────── */}
       <div
+        className="sf-toolbar"
         style={{
           display: "flex",
-          gap: "4px",
-          padding: "8px",
-          borderBottom: "1px solid #ddd",
+          gap: "2px",
+          padding: "4px 8px",
+          background: "#f8f9fa",
+          borderRadius: "8px 8px 0 0",
+          border: "1px solid #dadce0",
+          borderBottom: "none",
           flexWrap: "wrap",
           alignItems: "center",
+          minHeight: "40px",
         }}
       >
-        <button
-          onClick={() => editor?.chain().focus().toggleBold().run()}
+        {/* ── Font Family ──────────────────────────────────────── */}
+        <select
+          value={currentFontFamily}
           disabled={isSubmitted}
-          style={{
-            padding: "4px 8px",
-            fontWeight: editor?.isActive("bold") ? "bold" : "normal",
-            background: editor?.isActive("bold") ? "#e0e0e0" : "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: isSubmitted ? "not-allowed" : "pointer",
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val) {
+              editor?.chain().focus().setFontFamily(val).run();
+            } else {
+              editor?.chain().focus().unsetFontFamily().run();
+            }
           }}
+          title="Font"
+          style={{
+            height: "28px",
+            border: "1px solid transparent",
+            borderRadius: "4px",
+            background: "transparent",
+            fontSize: "12px",
+            color: "#333",
+            cursor: isSubmitted ? "not-allowed" : "pointer",
+            padding: "0 4px",
+            maxWidth: "130px",
+            outline: "none",
+          }}
+        >
+          <option value="">Default</option>
+          {FONT_FAMILIES.map((f) => (
+            <option
+              key={f.value}
+              value={f.value}
+              style={{ fontFamily: f.value }}
+            >
+              {f.label}
+            </option>
+          ))}
+        </select>
+
+        <Sep />
+
+        {/* ── Font Size ────────────────────────────────────────── */}
+        <select
+          value={currentFontSize}
+          disabled={isSubmitted}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val) {
+              editor?.chain().focus().setFontSize(val).run();
+            } else {
+              editor?.chain().focus().unsetFontSize().run();
+            }
+          }}
+          title="Font size"
+          style={{
+            height: "28px",
+            border: "1px solid transparent",
+            borderRadius: "4px",
+            background: "transparent",
+            fontSize: "12px",
+            color: "#333",
+            cursor: isSubmitted ? "not-allowed" : "pointer",
+            padding: "0 4px",
+            width: "58px",
+            outline: "none",
+          }}
+        >
+          <option value="">Size</option>
+          {FONT_SIZES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+
+        <Sep />
+
+        {/* ── Bold / Italic / Underline / Strikethrough ────────── */}
+        <TBtn
+          active={editor?.isActive("bold")}
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().toggleBold().run()}
+          title="Bold (Ctrl+B)"
+          style={{ fontWeight: 700 }}
         >
           B
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().toggleItalic().run()}
+        </TBtn>
+        <TBtn
+          active={editor?.isActive("italic")}
           disabled={isSubmitted}
-          style={{
-            padding: "4px 8px",
-            fontStyle: editor?.isActive("italic") ? "italic" : "normal",
-            background: editor?.isActive("italic") ? "#e0e0e0" : "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: isSubmitted ? "not-allowed" : "pointer",
-          }}
+          onClick={() => editor?.chain().focus().toggleItalic().run()}
+          title="Italic (Ctrl+I)"
+          style={{ fontStyle: "italic" }}
         >
           I
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().toggleUnderline().run()}
+        </TBtn>
+        <TBtn
+          active={editor?.isActive("underline")}
           disabled={isSubmitted}
-          style={{
-            padding: "4px 8px",
-            textDecoration: editor?.isActive("underline")
-              ? "underline"
-              : "none",
-            background: editor?.isActive("underline") ? "#e0e0e0" : "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: isSubmitted ? "not-allowed" : "pointer",
-          }}
+          onClick={() => editor?.chain().focus().toggleUnderline().run()}
+          title="Underline (Ctrl+U)"
+          style={{ textDecoration: "underline" }}
         >
           U
-        </button>
+        </TBtn>
+        <TBtn
+          active={editor?.isActive("strike")}
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().toggleStrike().run()}
+          title="Strikethrough"
+          style={{ textDecoration: "line-through" }}
+        >
+          S
+        </TBtn>
 
-        <span style={{ borderLeft: "1px solid #ccc", margin: "0 4px", height: "24px" }} />
+        <Sep />
 
-        <button
+        {/* ── Text Color ───────────────────────────────────────── */}
+        <div ref={textColorRef} style={{ position: "relative" }}>
+          <TBtn
+            disabled={isSubmitted}
+            onClick={() => {
+              setShowTextColor(!showTextColor);
+              setShowHighlight(false);
+              setShowLineSpacing(false);
+            }}
+            title="Text color"
+          >
+            <span style={{ position: "relative" }}>
+              A
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: "-2px",
+                  left: 0,
+                  right: 0,
+                  height: "3px",
+                  background: currentTextColor || "#000",
+                  borderRadius: "1px",
+                }}
+              />
+            </span>
+          </TBtn>
+          {showTextColor && (
+            <ColorPicker
+              colors={TEXT_COLORS}
+              activeColor={currentTextColor}
+              onSelect={(color) => {
+                if (color) {
+                  editor?.chain().focus().setColor(color).run();
+                } else {
+                  editor?.chain().focus().unsetColor().run();
+                }
+              }}
+              onClose={() => setShowTextColor(false)}
+              label="Text color"
+            />
+          )}
+        </div>
+
+        {/* ── Highlight ────────────────────────────────────────── */}
+        <div ref={highlightRef} style={{ position: "relative" }}>
+          <TBtn
+            active={editor?.isActive("highlight")}
+            disabled={isSubmitted}
+            onClick={() => {
+              setShowHighlight(!showHighlight);
+              setShowTextColor(false);
+              setShowLineSpacing(false);
+            }}
+            title="Highlight color"
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "16px",
+                height: "16px",
+                borderRadius: "2px",
+                background: currentHighlight || "#fef08a",
+                color: "#333",
+                fontSize: "11px",
+                fontWeight: 700,
+                lineHeight: 1,
+              }}
+            >
+              H
+            </span>
+          </TBtn>
+          {showHighlight && (
+            <ColorPicker
+              colors={HIGHLIGHT_COLORS}
+              activeColor={currentHighlight}
+              onSelect={(color) => {
+                if (color) {
+                  editor
+                    ?.chain()
+                    .focus()
+                    .toggleHighlight({ color })
+                    .run();
+                } else {
+                  editor?.chain().focus().unsetHighlight().run();
+                }
+              }}
+              onClose={() => setShowHighlight(false)}
+              label="Highlight color"
+            />
+          )}
+        </div>
+
+        <Sep />
+
+        {/* ── Text Alignment ───────────────────────────────────── */}
+        <TBtn
+          active={editor?.isActive({ textAlign: "left" })}
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().setTextAlign("left").run()}
+          title="Align left"
+        >
+          {/* Left align icon (3 bars, left-aligned) */}
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <rect x="1" y="2" width="12" height="1.5" rx="0.5" />
+            <rect x="1" y="6" width="8" height="1.5" rx="0.5" />
+            <rect x="1" y="10" width="10" height="1.5" rx="0.5" />
+          </svg>
+        </TBtn>
+        <TBtn
+          active={editor?.isActive({ textAlign: "center" })}
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().setTextAlign("center").run()}
+          title="Align center"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <rect x="1" y="2" width="12" height="1.5" rx="0.5" />
+            <rect x="3" y="6" width="8" height="1.5" rx="0.5" />
+            <rect x="2" y="10" width="10" height="1.5" rx="0.5" />
+          </svg>
+        </TBtn>
+        <TBtn
+          active={editor?.isActive({ textAlign: "right" })}
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().setTextAlign("right").run()}
+          title="Align right"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <rect x="1" y="2" width="12" height="1.5" rx="0.5" />
+            <rect x="5" y="6" width="8" height="1.5" rx="0.5" />
+            <rect x="3" y="10" width="10" height="1.5" rx="0.5" />
+          </svg>
+        </TBtn>
+        <TBtn
+          active={editor?.isActive({ textAlign: "justify" })}
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().setTextAlign("justify").run()}
+          title="Justify"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <rect x="1" y="2" width="12" height="1.5" rx="0.5" />
+            <rect x="1" y="6" width="12" height="1.5" rx="0.5" />
+            <rect x="1" y="10" width="12" height="1.5" rx="0.5" />
+          </svg>
+        </TBtn>
+
+        <Sep />
+
+        {/* ── Line Spacing ─────────────────────────────────────── */}
+        <div ref={lineSpacingRef} style={{ position: "relative" }}>
+          <TBtn
+            disabled={isSubmitted}
+            onClick={() => {
+              setShowLineSpacing(!showLineSpacing);
+              setShowTextColor(false);
+              setShowHighlight(false);
+            }}
+            title="Line spacing"
+            style={{ width: "auto", padding: "0 6px", fontSize: "11px" }}
+          >
+            {/* Line spacing icon */}
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+              <rect x="5" y="2" width="8" height="1.2" rx="0.5" />
+              <rect x="5" y="6.4" width="8" height="1.2" rx="0.5" />
+              <rect x="5" y="10.8" width="8" height="1.2" rx="0.5" />
+              <path d="M2.5 3.5 L1 5 L1.8 5 L1.8 9 L1 9 L2.5 10.5 L4 9 L3.2 9 L3.2 5 L4 5 Z" />
+            </svg>
+          </TBtn>
+          {showLineSpacing && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                marginTop: "4px",
+                background: "white",
+                border: "1px solid #dadce0",
+                borderRadius: "8px",
+                padding: "4px 0",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                zIndex: 100,
+                minWidth: "100px",
+              }}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {LINE_SPACINGS.map((ls) => (
+                <button
+                  key={ls.value}
+                  type="button"
+                  onClick={() => {
+                    editor?.chain().focus().setLineSpacing(ls.value).run();
+                    setShowLineSpacing(false);
+                  }}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "6px 16px",
+                    fontSize: "12px",
+                    color: "#333",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "#f1f3f4")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "transparent")
+                  }
+                >
+                  {ls.label}
+                </button>
+              ))}
+              <div
+                style={{
+                  height: "1px",
+                  background: "#dadce0",
+                  margin: "4px 0",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  editor?.chain().focus().unsetLineSpacing().run();
+                  setShowLineSpacing(false);
+                }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  padding: "6px 16px",
+                  fontSize: "12px",
+                  color: "#1a73e8",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#f1f3f4")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                Default
+              </button>
+            </div>
+          )}
+        </div>
+
+        <Sep />
+
+        {/* ── Indent / Outdent ─────────────────────────────────── */}
+        <TBtn
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().outdent().run()}
+          title="Decrease indent (Shift+Tab)"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <rect x="1" y="1" width="12" height="1.2" rx="0.5" />
+            <rect x="5" y="4.6" width="8" height="1.2" rx="0.5" />
+            <rect x="5" y="8.2" width="8" height="1.2" rx="0.5" />
+            <rect x="1" y="11.8" width="12" height="1.2" rx="0.5" />
+            <path d="M3.5 5.5 L1 7 L3.5 8.5 Z" />
+          </svg>
+        </TBtn>
+        <TBtn
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().indent().run()}
+          title="Increase indent (Tab)"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <rect x="1" y="1" width="12" height="1.2" rx="0.5" />
+            <rect x="5" y="4.6" width="8" height="1.2" rx="0.5" />
+            <rect x="5" y="8.2" width="8" height="1.2" rx="0.5" />
+            <rect x="1" y="11.8" width="12" height="1.2" rx="0.5" />
+            <path d="M1 5.5 L3.5 7 L1 8.5 Z" />
+          </svg>
+        </TBtn>
+
+        <Sep />
+
+        {/* ── Lists ────────────────────────────────────────────── */}
+        <TBtn
+          active={editor?.isActive("bulletList")}
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().toggleBulletList().run()}
+          title="Bullet list"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <circle cx="2.5" cy="3" r="1.2" />
+            <rect x="5" y="2.2" width="8" height="1.5" rx="0.5" />
+            <circle cx="2.5" cy="7" r="1.2" />
+            <rect x="5" y="6.2" width="8" height="1.5" rx="0.5" />
+            <circle cx="2.5" cy="11" r="1.2" />
+            <rect x="5" y="10.2" width="8" height="1.5" rx="0.5" />
+          </svg>
+        </TBtn>
+        <TBtn
+          active={editor?.isActive("orderedList")}
+          disabled={isSubmitted}
+          onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+          title="Numbered list"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="currentColor"
+            style={{ fontSize: "7px" }}
+          >
+            <text x="1" y="4" fontSize="5" fontWeight="700">
+              1.
+            </text>
+            <rect x="5" y="2.2" width="8" height="1.5" rx="0.5" />
+            <text x="1" y="8" fontSize="5" fontWeight="700">
+              2.
+            </text>
+            <rect x="5" y="6.2" width="8" height="1.5" rx="0.5" />
+            <text x="1" y="12" fontSize="5" fontWeight="700">
+              3.
+            </text>
+            <rect x="5" y="10.2" width="8" height="1.5" rx="0.5" />
+          </svg>
+        </TBtn>
+
+        <Sep />
+
+        {/* ── Headings ─────────────────────────────────────────── */}
+        <TBtn
+          active={editor?.isActive("heading", { level: 1 })}
+          disabled={isSubmitted}
           onClick={() =>
             editor?.chain().focus().toggleHeading({ level: 1 }).run()
           }
-          disabled={isSubmitted}
-          style={{
-            padding: "4px 8px",
-            background: editor?.isActive("heading", { level: 1 })
-              ? "#e0e0e0"
-              : "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: isSubmitted ? "not-allowed" : "pointer",
-          }}
+          title="Heading 1"
+          style={{ fontSize: "12px", fontWeight: 700 }}
         >
           H1
-        </button>
-        <button
+        </TBtn>
+        <TBtn
+          active={editor?.isActive("heading", { level: 2 })}
+          disabled={isSubmitted}
           onClick={() =>
             editor?.chain().focus().toggleHeading({ level: 2 }).run()
           }
-          disabled={isSubmitted}
-          style={{
-            padding: "4px 8px",
-            background: editor?.isActive("heading", { level: 2 })
-              ? "#e0e0e0"
-              : "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: isSubmitted ? "not-allowed" : "pointer",
-          }}
+          title="Heading 2"
+          style={{ fontSize: "11px", fontWeight: 700 }}
         >
           H2
-        </button>
-
-        <span style={{ borderLeft: "1px solid #ccc", margin: "0 4px", height: "24px" }} />
-
-        <button
-          onClick={() => editor?.chain().focus().toggleBulletList().run()}
+        </TBtn>
+        <TBtn
+          active={editor?.isActive("heading", { level: 3 })}
           disabled={isSubmitted}
-          style={{
-            padding: "4px 8px",
-            background: editor?.isActive("bulletList") ? "#e0e0e0" : "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: isSubmitted ? "not-allowed" : "pointer",
-          }}
+          onClick={() =>
+            editor?.chain().focus().toggleHeading({ level: 3 }).run()
+          }
+          title="Heading 3"
+          style={{ fontSize: "10px", fontWeight: 700 }}
         >
-          • List
-        </button>
-        <button
-          onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+          H3
+        </TBtn>
+
+        <Sep />
+
+        {/* ── Blockquote ───────────────────────────────────────── */}
+        <TBtn
+          active={editor?.isActive("blockquote")}
           disabled={isSubmitted}
-          style={{
-            padding: "4px 8px",
-            background: editor?.isActive("orderedList")
-              ? "#e0e0e0"
-              : "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: isSubmitted ? "not-allowed" : "pointer",
-          }}
-        >
-          1. List
-        </button>
-
-        <span style={{ borderLeft: "1px solid #ccc", margin: "0 4px", height: "24px" }} />
-
-        <button
           onClick={() => editor?.chain().focus().toggleBlockquote().run()}
-          disabled={isSubmitted}
-          style={{
-            padding: "4px 8px",
-            background: editor?.isActive("blockquote") ? "#e0e0e0" : "#f5f5f5",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            cursor: isSubmitted ? "not-allowed" : "pointer",
-          }}
+          title="Blockquote"
         >
-          &ldquo; Quote
-        </button>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <rect x="1" y="2" width="2" height="10" rx="0.5" />
+            <rect x="5" y="3" width="8" height="1.5" rx="0.5" />
+            <rect x="5" y="6.5" width="8" height="1.5" rx="0.5" />
+            <rect x="5" y="10" width="5" height="1.5" rx="0.5" />
+          </svg>
+        </TBtn>
       </div>
 
-      {/* Editor */}
+      {/* ── Editor Area ───────────────────────────────────────── */}
       <div
+        className="sf-editor-content"
         onClick={() => editor?.commands.focus()}
         style={{
-          border: "1px solid #ddd",
+          border: "1px solid #dadce0",
           borderTop: "none",
-          minHeight: "400px",
-          padding: "16px",
+          minHeight: "500px",
+          padding: "40px 60px",
           cursor: "text",
           display: "flex",
           flexDirection: "column",
+          background: "white",
+          borderRadius: "0 0 8px 8px",
+          fontSize: "12pt",
+          lineHeight: "1.5",
+          fontFamily: '"Times New Roman", Times, serif',
+          color: "#000",
         }}
       >
         <div style={{ flex: 1 }}>
@@ -344,7 +995,7 @@ export default function SFEditor({
         </div>
       </div>
 
-      {/* Snapshot Section */}
+      {/* ── Snapshot / Actions Bar ─────────────────────────────── */}
       <div
         style={{
           display: "flex",
@@ -364,10 +1015,11 @@ export default function SFEditor({
               onKeyDown={(e) => e.key === "Enter" && handleSaveSnapshot()}
               style={{
                 padding: "6px 10px",
-                border: "1px solid #ccc",
+                border: "1px solid #dadce0",
                 borderRadius: "4px",
                 flex: 1,
                 minWidth: "200px",
+                fontSize: "13px",
               }}
             />
             <button
@@ -375,12 +1027,13 @@ export default function SFEditor({
               disabled={!snapshotLabel.trim()}
               style={{
                 padding: "6px 16px",
-                background: "#3b82f6",
+                background: "#1a73e8",
                 color: "white",
                 border: "none",
                 borderRadius: "4px",
                 cursor: snapshotLabel.trim() ? "pointer" : "not-allowed",
                 opacity: snapshotLabel.trim() ? 1 : 0.5,
+                fontSize: "13px",
               }}
             >
               Save Snapshot
@@ -392,10 +1045,11 @@ export default function SFEditor({
               }}
               style={{
                 padding: "6px 12px",
-                background: "#f5f5f5",
-                border: "1px solid #ccc",
+                background: "#f1f3f4",
+                border: "1px solid #dadce0",
                 borderRadius: "4px",
                 cursor: "pointer",
+                fontSize: "13px",
               }}
             >
               Cancel
@@ -407,12 +1061,13 @@ export default function SFEditor({
             disabled={isSubmitted}
             style={{
               padding: "6px 16px",
-              background: "#3b82f6",
+              background: "#1a73e8",
               color: "white",
               border: "none",
               borderRadius: "4px",
               cursor: isSubmitted ? "not-allowed" : "pointer",
               opacity: isSubmitted ? 0.5 : 1,
+              fontSize: "13px",
             }}
           >
             Save Draft Snapshot
@@ -426,10 +1081,11 @@ export default function SFEditor({
           disabled={isSubmitted}
           style={{
             padding: "6px 16px",
-            background: "#f5f5f5",
-            border: "1px solid #ccc",
+            background: "#f1f3f4",
+            border: "1px solid #dadce0",
             borderRadius: "4px",
             cursor: isSubmitted ? "not-allowed" : "pointer",
+            fontSize: "13px",
           }}
         >
           Save
@@ -439,10 +1095,11 @@ export default function SFEditor({
           onClick={handleDownload}
           style={{
             padding: "6px 16px",
-            background: "#f5f5f5",
-            border: "1px solid #ccc",
+            background: "#f1f3f4",
+            border: "1px solid #dadce0",
             borderRadius: "4px",
             cursor: "pointer",
+            fontSize: "13px",
           }}
         >
           Download .sf
@@ -453,28 +1110,29 @@ export default function SFEditor({
           disabled={isSubmitted}
           style={{
             padding: "6px 16px",
-            background: isSubmitted ? "#9ca3af" : "#22c55e",
+            background: isSubmitted ? "#9ca3af" : "#188038",
             color: "white",
             border: "none",
             borderRadius: "4px",
             cursor: isSubmitted ? "not-allowed" : "pointer",
+            fontSize: "13px",
           }}
         >
           {isSubmitted ? "Submitted" : "Submit"}
         </button>
       </div>
 
-      {/* Status Bar */}
+      {/* ── Status Bar ────────────────────────────────────────── */}
       <div
         style={{
           display: "flex",
           gap: "20px",
           padding: "8px 12px",
-          background: "#f9f9f9",
-          border: "1px solid #eee",
+          background: "#f8f9fa",
+          border: "1px solid #dadce0",
           borderRadius: "4px",
-          fontSize: "13px",
-          color: "#666",
+          fontSize: "12px",
+          color: "#5f6368",
           flexWrap: "wrap",
         }}
       >
@@ -487,7 +1145,7 @@ export default function SFEditor({
           <span style={{ color: "#999" }}>ID: {submissionId}</span>
         )}
         {isSubmitted && (
-          <span style={{ color: "#22c55e", fontWeight: "bold" }}>
+          <span style={{ color: "#188038", fontWeight: 600 }}>
             SUBMITTED
           </span>
         )}

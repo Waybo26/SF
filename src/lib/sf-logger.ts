@@ -98,6 +98,16 @@ export class SFLogger {
     });
   }
 
+  logParagraphFormat(attr: string, value: string | number, position: number): void {
+    this.events.push({
+      type: "paragraph_format",
+      attr,
+      value,
+      position,
+      timestamp: Date.now(),
+    });
+  }
+
   logTabAway(): void {
     this.tabAwayTimestamp = Date.now();
     this.events.push({

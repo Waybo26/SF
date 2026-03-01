@@ -1,12 +1,62 @@
 /**
  * Shared ProseMirror schema that matches exactly what TipTap produces
- * with StarterKit + Underline extensions.
+ * with StarterKit + Underline + TextStyle + Color + FontFamily + FontSize
+ * + Highlight + TextAlign + LineSpacing + Indent extensions.
  *
  * Used by both the student editor (via TipTap) and the headless
  * playback engine (for reconstructing document state from events).
  */
 
 import { Schema } from "@tiptap/pm/model";
+
+/**
+ * Helper to build paragraph-level attributes shared by paragraph and heading nodes.
+ * These correspond to the TextAlign, LineSpacing, and Indent extensions.
+ */
+function blockAttrs(extra: Record<string, unknown> = {}) {
+  return {
+    ...extra,
+    textAlign: { default: null },
+    lineHeight: { default: null },
+    indent: { default: 0 },
+  };
+}
+
+/**
+ * Render paragraph-level style attributes (textAlign, lineHeight, indent) as
+ * inline styles and data attributes on the DOM element.
+ */
+function blockStyle(attrs: Record<string, unknown>): Record<string, string> {
+  const style: string[] = [];
+  const out: Record<string, string> = {};
+
+  if (attrs.textAlign && attrs.textAlign !== "left") {
+    style.push(`text-align: ${attrs.textAlign}`);
+  }
+  if (attrs.lineHeight) {
+    style.push(`line-height: ${attrs.lineHeight}`);
+  }
+  if (attrs.indent && Number(attrs.indent) > 0) {
+    style.push(`margin-left: ${Number(attrs.indent) * 0.5}in`);
+    out["data-indent"] = String(attrs.indent);
+  }
+
+  if (style.length > 0) {
+    out.style = style.join("; ");
+  }
+  return out;
+}
+
+/**
+ * Parse paragraph-level attributes from a DOM element.
+ */
+function parseBlockAttrs(dom: HTMLElement) {
+  const textAlign = dom.style.textAlign || null;
+  const lineHeight = dom.style.lineHeight || null;
+  const indentAttr = dom.getAttribute("data-indent");
+  const indent = indentAttr ? parseInt(indentAttr, 10) : 0;
+  return { textAlign, lineHeight, indent };
+}
 
 export const sfSchema = new Schema({
   topNode: "doc",
@@ -19,9 +69,20 @@ export const sfSchema = new Schema({
     paragraph: {
       content: "inline*",
       group: "block",
-      parseDOM: [{ tag: "p" }],
-      toDOM() {
-        return ["p", 0];
+      attrs: blockAttrs(),
+      parseDOM: [
+        {
+          tag: "p",
+          getAttrs(dom: HTMLElement) {
+            return parseBlockAttrs(dom);
+          },
+        },
+      ],
+      toDOM(node) {
+        const domAttrs = blockStyle(node.attrs);
+        return Object.keys(domAttrs).length > 0
+          ? ["p", domAttrs, 0]
+          : ["p", 0];
       },
     },
 
@@ -33,19 +94,50 @@ export const sfSchema = new Schema({
       content: "inline*",
       group: "block",
       defining: true,
-      attrs: {
-        level: { default: 1 },
-      },
+      attrs: blockAttrs({ level: { default: 1 } }),
       parseDOM: [
-        { tag: "h1", attrs: { level: 1 } },
-        { tag: "h2", attrs: { level: 2 } },
-        { tag: "h3", attrs: { level: 3 } },
-        { tag: "h4", attrs: { level: 4 } },
-        { tag: "h5", attrs: { level: 5 } },
-        { tag: "h6", attrs: { level: 6 } },
+        {
+          tag: "h1",
+          getAttrs(dom: HTMLElement) {
+            return { level: 1, ...parseBlockAttrs(dom) };
+          },
+        },
+        {
+          tag: "h2",
+          getAttrs(dom: HTMLElement) {
+            return { level: 2, ...parseBlockAttrs(dom) };
+          },
+        },
+        {
+          tag: "h3",
+          getAttrs(dom: HTMLElement) {
+            return { level: 3, ...parseBlockAttrs(dom) };
+          },
+        },
+        {
+          tag: "h4",
+          getAttrs(dom: HTMLElement) {
+            return { level: 4, ...parseBlockAttrs(dom) };
+          },
+        },
+        {
+          tag: "h5",
+          getAttrs(dom: HTMLElement) {
+            return { level: 5, ...parseBlockAttrs(dom) };
+          },
+        },
+        {
+          tag: "h6",
+          getAttrs(dom: HTMLElement) {
+            return { level: 6, ...parseBlockAttrs(dom) };
+          },
+        },
       ],
       toDOM(node) {
-        return [`h${node.attrs.level}`, 0];
+        const domAttrs = blockStyle(node.attrs);
+        return Object.keys(domAttrs).length > 0
+          ? [`h${node.attrs.level}`, domAttrs, 0]
+          : [`h${node.attrs.level}`, 0];
       },
     },
 
@@ -244,6 +336,69 @@ export const sfSchema = new Schema({
       ],
       toDOM() {
         return ["u", 0];
+      },
+    },
+
+    // TextStyle mark — container for color, fontFamily, fontSize attributes.
+    // TipTap's @tiptap/extension-text-style creates this mark; Color,
+    // FontFamily, and FontSize each add an attribute to it.
+    textStyle: {
+      parseDOM: [
+        {
+          tag: "span",
+          getAttrs: (dom: HTMLElement) => {
+            const hasStyle = dom.hasAttribute("style");
+            if (!hasStyle) return false;
+            return {
+              color: dom.style.color || null,
+              fontFamily: dom.style.fontFamily?.replace(/['"]+/g, "") || null,
+              fontSize: dom.style.fontSize || null,
+            };
+          },
+        },
+      ],
+      attrs: {
+        color: { default: null },
+        fontFamily: { default: null },
+        fontSize: { default: null },
+      },
+      toDOM(mark) {
+        const styles: string[] = [];
+        if (mark.attrs.color) styles.push(`color: ${mark.attrs.color}`);
+        if (mark.attrs.fontFamily)
+          styles.push(`font-family: ${mark.attrs.fontFamily}`);
+        if (mark.attrs.fontSize)
+          styles.push(`font-size: ${mark.attrs.fontSize}`);
+        return styles.length > 0
+          ? ["span", { style: styles.join("; ") }, 0]
+          : ["span", 0];
+      },
+    },
+
+    // Highlight mark — background color for text.
+    // Matches @tiptap/extension-highlight with multicolor: true.
+    highlight: {
+      attrs: {
+        color: { default: null },
+      },
+      parseDOM: [
+        {
+          tag: "mark",
+          getAttrs: (dom: HTMLElement) => ({
+            color:
+              dom.getAttribute("data-color") ||
+              dom.style.backgroundColor ||
+              null,
+          }),
+        },
+      ],
+      toDOM(mark) {
+        const attrs: Record<string, string> = {};
+        if (mark.attrs.color) {
+          attrs["data-color"] = mark.attrs.color;
+          attrs.style = `background-color: ${mark.attrs.color}`;
+        }
+        return ["mark", attrs, 0];
       },
     },
   },

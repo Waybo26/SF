@@ -57,6 +57,14 @@ export interface FormattingEvent {
   timestamp: number;
 }
 
+export interface ParagraphFormatEvent {
+  type: "paragraph_format";
+  attr: string; // "textAlign" | "lineHeight" | "indent"
+  value: string | number;
+  position: number; // position of the node in the document
+  timestamp: number;
+}
+
 export interface TabAwayEvent {
   type: "tab_away";
   timestamp: number;
@@ -83,6 +91,7 @@ export type SFEvent =
   | CutEvent
   | SelectionEvent
   | FormattingEvent
+  | ParagraphFormatEvent
   | TabAwayEvent
   | TabReturnEvent
   | SnapshotEvent;
