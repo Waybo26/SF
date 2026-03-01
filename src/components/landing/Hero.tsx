@@ -1,23 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import ScaleGrid from "./ScaleGrid";
 
 export default function Hero() {
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const [gridCells, setGridCells] = useState<Array<{id: number, delay: number, duration: number, opacity: number, color: string}>>([]);
 
   useEffect(() => {
-    // Generate grid only on client-side to prevent hydration mismatch
-    const cells = Array.from({ length: 80 }).map((_, i) => ({
-      id: i,
-      delay: Math.random() * 5,
-      duration: 3 + Math.random() * 4,
-      opacity: 0.05 + Math.random() * 0.15,
-      color: Math.random() > 0.7 ? "bg-brand-red" : "bg-gray-200"
-    }));
-    setGridCells(cells);
-
     // Simple parallax effect for the title frame
     const handleMouseMove = (e: MouseEvent) => {
       if (!titleRef.current) return;
@@ -41,23 +31,8 @@ export default function Hero() {
          {/* Animated "Pulse" Circle - Subtle Red Glow */}
          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-brand-red/5 rounded-full blur-[120px] animate-pulse-slow"></div>
          
-         {/* Grid Overlay */}
-         <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]"></div>
-      
-         {/* Expanded Animated Pixel Grid Backdrop */}
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] grid grid-cols-12 grid-rows-12 gap-2 opacity-30 mix-blend-multiply pointer-events-none z-[-1] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]">
-              {gridCells.map((cell) => (
-                <div 
-                  key={cell.id} 
-                  className={`${cell.color} rounded-sm animate-pulse-grid`}
-                  style={{ 
-                    animationDelay: `${cell.delay}s`,
-                    animationDuration: `${cell.duration}s`,
-                    opacity: cell.opacity
-                  }}
-                ></div>
-              ))}
-         </div>
+         {/* Scale Grid Background */}
+         <ScaleGrid />
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
