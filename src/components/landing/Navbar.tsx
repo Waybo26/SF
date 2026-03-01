@@ -61,7 +61,7 @@ export default function Navbar() {
 
       {/* Mobile Menu Dropdown */}
       {isOpen && (
-        <div className="md:hidden absolute top-16 left-0 w-full bg-white shadow-lg border-b border-gray-100 animate-in slide-in-from-top-2">
+        <div className="md:hidden absolute top-16 left-0 w-full bg-white shadow-lg border-b border-gray-100 animate-fade-in-up">
           <div className="px-4 pt-2 pb-6 space-y-4 flex flex-col">
             <Link 
               href="/#features" 

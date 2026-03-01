@@ -14,26 +14,32 @@
   --animate-grid-flow: gridFlow 20s linear infinite;
   --animate-pulse-red: pulseRed 3s ease-in-out infinite;
   --animate-pulse-neutral: pulseNeutral 4s ease-in-out infinite;
+}
 
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-20px); }
-  }
-  
-  @keyframes pulseRed {
-    0%, 100% { background-color: rgba(157, 21, 53, 0.05); }
-    50% { background-color: rgba(157, 21, 53, 0.25); }
-  }
-  
-  @keyframes pulseNeutral {
-    0%, 100% { background-color: rgba(0, 0, 0, 0.01); }
-    50% { background-color: rgba(0, 0, 0, 0.06); }
-  }
-  
-  @keyframes gridFlow {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(50px); }
-  }
+/* Keyframes must be at root level — Tailwind v4 @theme only supports custom properties */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes pulseRed {
+  0%, 100% { background-color: rgba(157, 21, 53, 0.05); }
+  50% { background-color: rgba(157, 21, 53, 0.25); }
+}
+
+@keyframes pulseNeutral {
+  0%, 100% { background-color: rgba(0, 0, 0, 0.01); }
+  50% { background-color: rgba(0, 0, 0, 0.06); }
+}
+
+@keyframes gridFlow {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(50px); }
 }
 
 :root {
@@ -93,9 +99,14 @@ body {
   animation: fadeIn 0.8s ease-out forwards;
 }
 
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
+.anim-delay-100 { animation-delay: 100ms; }
+.anim-delay-200 { animation-delay: 200ms; }
+.anim-delay-300 { animation-delay: 300ms; }
+
+/* Shadow Glow Utility */
+.shadow-glow {
+  box-shadow: 0 0 8px 2px rgba(157, 21, 53, 0.4);
+}
 
 /* Mesh Gradients */
 .mesh-bg-hero {
@@ -131,15 +142,17 @@ body {
   background-size: 20px 20px;
 }
 
-/* Scroll Reveal Animations - Enhanced */
-.reveal {
+/* Scroll Reveal Animations - Progressive Enhancement
+   Content is visible by default. Only hide when JS has loaded (via .js-loaded on <html>).
+   This ensures content is always readable even if JS fails, is blocked, or hasn't hydrated. */
+.js-loaded .reveal {
   opacity: 0;
   transform: translateY(30px);
   transition: opacity 1s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: opacity, transform;
 }
 
-.reveal.active {
+.js-loaded .reveal.active {
   opacity: 1;
   transform: translateY(0);
 }
@@ -160,16 +173,16 @@ body {
 }
 
 /* Side reveal variants used in workflow cards */
-.reveal-side-left {
+.js-loaded .reveal-side-left {
   transform: translateX(-24px);
 }
 
-.reveal-side-right {
+.js-loaded .reveal-side-right {
   transform: translateX(24px);
 }
 
-.reveal-side-left.active,
-.reveal-side-right.active {
+.js-loaded .reveal-side-left.active,
+.js-loaded .reveal-side-right.active {
   transform: translateX(0);
 }
 

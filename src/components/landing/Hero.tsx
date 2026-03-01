@@ -47,7 +47,7 @@ export default function Hero() {
           <div className="relative inline-block p-9 md:p-12 mb-10 group transition-transform duration-100 ease-out" ref={titleRef}>
               
               {/* Glass Background Panel with Tech Grid */}
-              <div className="absolute inset-0 bg-white/60 backdrop-blur-md border border-white/80 shadow-2xl rounded-sm opacity-0 animate-fade-in-up delay-200 overflow-hidden z-1" style={{ animationFillMode: 'forwards' }}>
+              <div className="absolute inset-0 bg-white/60 backdrop-blur-md border border-white/80 shadow-2xl rounded-sm animate-fade-in-up anim-delay-200 overflow-hidden z-[1]" style={{ animationFillMode: 'forwards' }}>
                   {/* Subtle Tech Grid Pattern */}
                   <div className="absolute inset-0 tech-grid opacity-30"></div>
                   {/* Diagonal Shine */}
@@ -55,16 +55,16 @@ export default function Hero() {
               </div>
               
               {/* Animated Corner Frames - Enhanced */}
-              <div className="absolute top-0 left-0 w-24 h-24 border-t-[6px] border-l-[6px] border-brand-red opacity-0 animate-fade-in-up delay-300 z-20" style={{ animationFillMode: 'forwards' }}></div>
+              <div className="absolute top-0 left-0 w-24 h-24 border-t-[6px] border-l-[6px] border-brand-red animate-fade-in-up anim-delay-300 z-20" style={{ animationFillMode: 'forwards' }}></div>
               <div className="absolute top-2 left-2 w-4 h-4 bg-brand-red/20 z-20"></div>
 
-              <div className="absolute top-0 right-0 w-24 h-24 border-t-[6px] border-r-[6px] border-brand-red opacity-0 animate-fade-in-up delay-300 z-20" style={{ animationFillMode: 'forwards' }}></div>
+              <div className="absolute top-0 right-0 w-24 h-24 border-t-[6px] border-r-[6px] border-brand-red animate-fade-in-up anim-delay-300 z-20" style={{ animationFillMode: 'forwards' }}></div>
               <div className="absolute top-2 right-2 w-4 h-4 bg-brand-red/20 z-20"></div>
 
-              <div className="absolute bottom-0 left-0 w-24 h-24 border-b-[6px] border-l-[6px] border-brand-red opacity-0 animate-fade-in-up delay-300 z-20" style={{ animationFillMode: 'forwards' }}></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 border-b-[6px] border-l-[6px] border-brand-red animate-fade-in-up anim-delay-300 z-20" style={{ animationFillMode: 'forwards' }}></div>
               <div className="absolute bottom-2 left-2 w-4 h-4 bg-brand-red/20 z-20"></div>
 
-              <div className="absolute bottom-0 right-0 w-24 h-24 border-b-[6px] border-r-[6px] border-brand-red opacity-0 animate-fade-in-up delay-300 z-20" style={{ animationFillMode: 'forwards' }}></div>
+              <div className="absolute bottom-0 right-0 w-24 h-24 border-b-[6px] border-r-[6px] border-brand-red animate-fade-in-up anim-delay-300 z-20" style={{ animationFillMode: 'forwards' }}></div>
               <div className="absolute bottom-2 right-2 w-4 h-4 bg-brand-red/20 z-20"></div>
 
               <div className="absolute top-4 right-6 text-[10px] tracking-widest font-mono text-gray-500 flex items-center gap-2 z-20">
@@ -73,19 +73,19 @@ export default function Hero() {
               </div>
 
               <h1 className="relative z-10 text-4xl md:text-6xl lg:text-7xl font-black tracking-tight text-gray-900 leading-[0.95] drop-shadow-sm mix-blend-multiply">
-                <span className="block animate-fade-in-up delay-100">BRINGING BACK</span>
-                <span className="block animate-fade-in-up delay-200">CRITICAL THINKING</span>
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-red via-red-600 to-brand-red-light animate-fade-in-up delay-300 pb-2">
+                <span className="block animate-fade-in-up anim-delay-100">BRINGING BACK</span>
+                <span className="block animate-fade-in-up anim-delay-200">CRITICAL THINKING</span>
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-red via-red-600 to-brand-red-light animate-fade-in-up anim-delay-300 pb-2">
                   TO STUDENT THINKING
                 </span>
               </h1>
           </div>
           
-          <p className="mt-6 max-w-3xl mx-auto text-xl md:text-2xl text-gray-600 mb-10 leading-relaxed font-medium tracking-tight animate-fade-in-up delay-300">
+          <p className="mt-6 max-w-3xl mx-auto text-xl md:text-2xl text-gray-600 mb-10 leading-relaxed font-medium tracking-tight animate-fade-in-up anim-delay-300">
             SF helps educators evaluate writing with confidence by capturing how students draft, revise, and build ideas over time. In the Viewer, teachers can review the full timeline to assess growth, effort, and authenticity with context.
           </p>
           
-          <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in-up delay-300 relative z-20">
+          <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in-up anim-delay-300 relative z-20">
             <Link 
               href="/editor" 
               className="px-8 py-4 rounded-none bg-brand-red text-white text-base font-bold hover:bg-brand-red-light transition-all shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] hover:translate-x-[2px] hover:translate-y-[2px] border-2 border-brand-red uppercase tracking-wide"

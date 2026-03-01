@@ -39,7 +39,7 @@ export default function ScaleGrid() {
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
-      <div className="w-full h-full grid grid-cols-12 md:grid-cols-20 gap-1 opacity-60">
+      <div className="w-full h-full grid grid-cols-12 md:grid-cols-[repeat(20,1fr)] gap-1 opacity-60">
         {cells.map((cell) => (
           <div 
             key={cell.id}
