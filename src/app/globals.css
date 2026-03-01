@@ -44,8 +44,9 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
+  line-height: 1.55;
 }
 
 /* TipTap editor: remove browser focus outline and fill container */
@@ -147,6 +148,30 @@ body {
 .reveal-delay-100 { transition-delay: 100ms; }
 .reveal-delay-200 { transition-delay: 200ms; }
 .reveal-delay-300 { transition-delay: 300ms; }
+
+/* Consistent high-impact section title style for landing sections */
+.section-title-display {
+  @apply text-4xl md:text-6xl font-extrabold tracking-[-0.02em] leading-[1.02];
+}
+
+/* Unified body text style for feature/workflow copy blocks */
+.section-copy-standard {
+  @apply text-base md:text-lg leading-relaxed text-gray-600;
+}
+
+/* Side reveal variants used in workflow cards */
+.reveal-side-left {
+  transform: translateX(-24px);
+}
+
+.reveal-side-right {
+  transform: translateX(24px);
+}
+
+.reveal-side-left.active,
+.reveal-side-right.active {
+  transform: translateX(0);
+}
 
 /* Hero Frame Animations */
 @keyframes drawFrame {

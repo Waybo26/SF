@@ -2,65 +2,73 @@ export default function HowItWorks() {
   const steps = [
     {
       id: "01",
-      title: "Write",
-      description: "Students write in the secure editor. Every keystroke is logged.",
-      color: "bg-brand-red"
+      role: "Student",
+      title: "Write in SF Editor",
+      description: "Students draft naturally while SF captures writing behavior in the background.",
+      sideClass: "md:mr-24 reveal-side-left",
+      markerClass: "bg-brand-red",
     },
     {
       id: "02",
-      title: "Snapshot",
-      description: "Drafts are saved at key milestones to show progress.",
-      color: "bg-gray-800"
+      role: "Student",
+      title: "Revise and Save",
+      description: "Edits, pauses, and saved milestones are preserved so progress is clearly documented.",
+      sideClass: "md:ml-24 reveal-side-right",
+      markerClass: "bg-gray-900",
     },
     {
       id: "03",
-      title: "Submit",
-      description: "The .sf file is generated, containing the full history.",
-      color: "bg-gray-800"
+      role: "System",
+      title: "Generate the SF File",
+      description: "At submission, SF packages the full writing history into a shareable evidence file.",
+      sideClass: "md:mr-24 reveal-side-left",
+      markerClass: "bg-gray-900",
     },
     {
       id: "04",
-      title: "Review",
-      description: "Teachers play back the writing process like a video.",
-      color: "bg-brand-red"
+      role: "Teacher",
+      title: "Review in the Viewer",
+      description: "Teachers replay the timeline to assess growth, effort, and authenticity with context.",
+      sideClass: "md:ml-24 reveal-side-right",
+      markerClass: "bg-brand-red",
     }
   ];
 
   return (
-    <section id="how-it-works" className="py-32 bg-white relative overflow-hidden reveal">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="mb-20 text-center reveal reveal-delay-100">
-          <h2 className="text-4xl font-bold tracking-tight text-gray-900 mb-6">
-            The Timeline of Truth
+    <section id="how-it-works" className="py-28 md:py-32 bg-white relative overflow-hidden reveal">
+      <div className="max-w-[80rem] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="mb-16 text-center reveal reveal-delay-100">
+          <h2 className="section-title-display text-gray-900 mb-6">
+            How SF Works
           </h2>
-          <p className="text-xl text-gray-500 max-w-2xl mx-auto">
-            A seamless workflow that integrates directly into your existing curriculum.
+          <p className="section-copy-standard max-w-4xl mx-auto text-gray-500">
+            A clear student-to-teacher workflow built for evidence-based writing assessment.
           </p>
         </div>
 
-        <div className="relative mt-24">
-          {/* Connecting Line (Horizontal) */}
-          <div className="hidden md:block absolute top-12 left-0 w-full h-1 bg-gray-100 -z-10 rounded-full"></div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-            {steps.map((step, index) => (
-              <div key={step.id} className={`relative group text-center md:text-left reveal reveal-delay-${(index + 2) * 100}`}>
-                {/* Step Marker */}
-                <div className={`mx-auto md:mx-0 w-24 h-24 rounded-2xl ${step.color} text-white flex items-center justify-center text-3xl font-bold shadow-xl shadow-${step.color}/20 mb-8 group-hover:scale-105 transition-transform duration-300 relative overflow-hidden ring-4 ring-white`}>
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                    {step.id}
-                </div>
-                
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">{step.title}</h3>
-                <p className="text-gray-500 leading-relaxed text-base">{step.description}</p>
-                
-                {/* Mobile Connector */}
-                {index !== steps.length - 1 && (
-                    <div className="md:hidden w-1 h-16 bg-gray-100 mx-auto my-8"></div>
-                )}
+        <div className="mt-14 space-y-8">
+          {steps.map((step, index) => (
+            <div
+              key={step.id}
+              className={`reveal ${step.sideClass} rounded-2xl border border-gray-200 bg-gray-50/80 p-6 md:p-10 shadow-sm`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <span className="inline-flex items-center rounded-full bg-white border border-gray-200 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-gray-700">
+                  {step.role}
+                </span>
+                <span className={`inline-flex items-center justify-center w-12 h-12 rounded-xl text-white text-lg font-black ${step.markerClass}`}>
+                  {step.id}
+                </span>
               </div>
-            ))}
-          </div>
+
+              <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 leading-tight mb-3">{step.title}</h3>
+              <p className="section-copy-standard max-w-4xl">{step.description}</p>
+
+              {index !== steps.length - 1 && (
+                <div className="mt-8 h-px w-full bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </section>

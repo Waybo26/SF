@@ -1,37 +1,36 @@
 export default function Features() {
   return (
-    <section id="features" className="py-32 bg-brand-red relative overflow-hidden">
+    <section id="features" className="py-24 md:py-28 bg-brand-red relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center text-white">
         
-        <div className="space-y-8 reveal reveal-delay-100">
-            <h2 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] drop-shadow-md">
-              THE NEW STANDARD FOR <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-red-100 to-white">ACADEMIC INTEGRITY.</span>
+        <div className="space-y-7 reveal reveal-delay-100">
+            <h2 className="section-title-display text-white drop-shadow-md">
+              WHAT SF DELIVERS
             </h2>
             
             <div className="w-24 h-1 bg-white/30 mx-auto rounded-full my-8"></div>
             
-            <p className="text-2xl md:text-3xl font-medium text-red-50 max-w-4xl mx-auto leading-relaxed tracking-tight">
-              Designed specifically for <span className="text-white font-bold border-b-2 border-white/40 pb-1">educators</span> to verify authenticity with confidence.
+            <p className="text-lg md:text-xl font-medium text-red-50 max-w-4xl mx-auto leading-relaxed">
+              One clear workflow that gives teachers evidence they can trust.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-5xl mx-auto">
-                <div className="p-6 rounded-2xl bg-white/10 backdrop-blur border border-white/10 hover:bg-white/20 transition-all duration-300 group">
-                    <div className="text-3xl font-bold mb-2 group-hover:scale-105 transition-transform">🛡️</div>
-                    <h3 className="text-xl font-bold mb-2">Prevent AI Misuse</h3>
-                    <p className="text-red-100 text-sm leading-relaxed">Stop guessing with detectors. See the actual writing process.</p>
+            <div className="mt-10 max-w-5xl mx-auto rounded-2xl bg-white/10 backdrop-blur border border-white/20 p-6 md:p-10 text-left">
+                <p className="text-base md:text-lg text-red-50 leading-relaxed">
+                  <span className="font-bold text-white">Capture:</span> Students write, revise, and save naturally while SF preserves the full writing history.
+                </p>
+                <div className="h-px my-5 bg-white/20"></div>
+                <p className="text-base md:text-lg text-red-50 leading-relaxed">
+                  <span className="font-bold text-white">Review:</span> Teachers open the Viewer and inspect an interactive timeline of how the final draft was built.
+                </p>
+                <div className="h-px my-5 bg-white/20"></div>
+                <p className="text-base md:text-lg text-red-50 leading-relaxed">
+                  <span className="font-bold text-white">Decide:</span> Assessment becomes more fair and informed because decisions are based on process evidence, not guesswork.
+                </p>
+                <div className="h-px my-5 bg-white/20"></div>
+                <p className="text-sm md:text-base text-red-100 leading-relaxed">
+                  SF helps schools protect academic integrity while keeping feedback focused on growth and learning.
+                </p>
                 </div>
-                <div className="p-6 rounded-2xl bg-white/10 backdrop-blur border border-white/10 hover:bg-white/20 transition-all duration-300 group">
-                    <div className="text-3xl font-bold mb-2 group-hover:scale-105 transition-transform">✅</div>
-                    <h3 className="text-xl font-bold mb-2">Reliable Verification</h3>
-                    <p className="text-red-100 text-sm leading-relaxed">Proof of effort that holds up to scrutiny. 100% transparent.</p>
-                </div>
-                <div className="p-6 rounded-2xl bg-white/10 backdrop-blur border border-white/10 hover:bg-white/20 transition-all duration-300 group">
-                    <div className="text-3xl font-bold mb-2 group-hover:scale-105 transition-transform">🔗</div>
-                    <h3 className="text-xl font-bold mb-2">Seamless Integration</h3>
-                    <p className="text-red-100 text-sm leading-relaxed">Works with your existing workflow. No complex setup required.</p>
-                </div>
-            </div>
         </div>
 
       </div>

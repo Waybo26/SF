@@ -1,7 +1,6 @@
 import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
 import HowItWorks from "@/components/landing/HowItWorks";
-import CTA from "@/components/landing/CTA";
 import Footer from "@/components/landing/Footer";
 import ScrollObserver from "@/components/landing/ScrollObserver";
 
@@ -12,7 +11,6 @@ export default function Home() {
       <Hero />
       <Features />
       <HowItWorks />
-      <CTA />
       <Footer />
     </main>
   );

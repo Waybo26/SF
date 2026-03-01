@@ -22,7 +22,7 @@ export default function Hero() {
   }, []);
 
   return (
-    <section className="relative pt-32 pb-32 lg:pt-48 lg:pb-40 overflow-hidden min-h-[90vh] flex flex-col justify-center">
+    <section className="relative pt-28 pb-24 lg:pt-40 lg:pb-32 overflow-hidden min-h-[85vh] flex flex-col justify-center">
       
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
          {/* Mesh Gradient Base */}
@@ -36,15 +36,15 @@ export default function Hero() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
-        <div className="text-center max-w-6xl mx-auto mb-20 md:mb-32">
+        <div className="text-center max-w-5xl mx-auto mb-16 md:mb-24">
           
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/50 backdrop-blur border border-red-100 text-brand-red text-sm font-bold uppercase tracking-widest mb-12 animate-fade-in-up shadow-sm">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/50 backdrop-blur border border-red-100 text-brand-red text-sm font-bold uppercase tracking-widest mb-10 animate-fade-in-up shadow-sm">
             <span className="w-2.5 h-2.5 rounded-full bg-brand-red animate-pulse shadow-glow"></span>
-            Process-Based Assessment
+            Writing Process Evidence
           </div>
           
           {/* Hero Title Frame Container */}
-          <div className="relative inline-block p-12 md:p-16 mb-12 group transition-transform duration-100 ease-out" ref={titleRef}>
+          <div className="relative inline-block p-9 md:p-12 mb-10 group transition-transform duration-100 ease-out" ref={titleRef}>
               
               {/* Glass Background Panel with Tech Grid */}
               <div className="absolute inset-0 bg-white/60 backdrop-blur-md border border-white/80 shadow-2xl rounded-sm opacity-0 animate-fade-in-up delay-200 overflow-hidden z-1" style={{ animationFillMode: 'forwards' }}>
@@ -67,29 +67,34 @@ export default function Hero() {
               <div className="absolute bottom-0 right-0 w-24 h-24 border-b-[6px] border-r-[6px] border-brand-red opacity-0 animate-fade-in-up delay-300 z-20" style={{ animationFillMode: 'forwards' }}></div>
               <div className="absolute bottom-2 right-2 w-4 h-4 bg-brand-red/20 z-20"></div>
 
-              <h1 className="relative z-10 text-6xl md:text-9xl font-black tracking-tighter text-gray-900 leading-[0.9] drop-shadow-sm mix-blend-multiply">
-                <span className="block animate-fade-in-up delay-100">THE PLATFORM</span>
-                <span className="block animate-fade-in-up delay-200">THAT PROVES</span>
+              <div className="absolute top-4 right-6 text-[10px] tracking-widest font-mono text-gray-500 flex items-center gap-2 z-20">
+                <span>AI: 0% DETECTED</span>
+                <span className="inline-block w-2 h-2 rounded-full bg-brand-red"></span>
+              </div>
+
+              <h1 className="relative z-10 text-4xl md:text-6xl lg:text-7xl font-black tracking-tight text-gray-900 leading-[0.95] drop-shadow-sm mix-blend-multiply">
+                <span className="block animate-fade-in-up delay-100">BRINGING BACK</span>
+                <span className="block animate-fade-in-up delay-200">CRITICAL THINKING</span>
                 <span className="block text-transparent bg-clip-text bg-gradient-to-r from-brand-red via-red-600 to-brand-red-light animate-fade-in-up delay-300 pb-2">
-                  THE PROCESS.
+                  TO STUDENT THINKING
                 </span>
               </h1>
           </div>
           
-          <p className="mt-8 max-w-3xl mx-auto text-2xl md:text-3xl text-gray-600 mb-12 leading-relaxed font-medium tracking-tight animate-fade-in-up delay-300">
-            Go beyond the final draft. Reveal the <span className="text-brand-red font-bold underline decoration-red-200 decoration-4 underline-offset-4">authentic journey</span> of student writing.
+          <p className="mt-6 max-w-3xl mx-auto text-xl md:text-2xl text-gray-600 mb-10 leading-relaxed font-medium tracking-tight animate-fade-in-up delay-300">
+            SF helps educators evaluate writing with confidence by capturing how students draft, revise, and build ideas over time. In the Viewer, teachers can review the full timeline to assess growth, effort, and authenticity with context.
           </p>
           
-          <div className="flex flex-col sm:flex-row justify-center gap-6 animate-fade-in-up delay-300 relative z-20">
+          <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-in-up delay-300 relative z-20">
             <Link 
               href="/editor" 
-              className="px-10 py-5 rounded-none bg-brand-red text-white text-lg font-bold hover:bg-brand-red-light transition-all shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] hover:translate-x-[2px] hover:translate-y-[2px] border-2 border-brand-red uppercase tracking-wide"
+              className="px-8 py-4 rounded-none bg-brand-red text-white text-base font-bold hover:bg-brand-red-light transition-all shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] hover:translate-x-[2px] hover:translate-y-[2px] border-2 border-brand-red uppercase tracking-wide"
             >
-              Start Writing
+              Log in
             </Link>
             <Link 
               href="#how-it-works" 
-              className="px-10 py-5 rounded-none bg-white text-gray-900 border-2 border-gray-200 text-lg font-bold hover:bg-gray-50 transition-all shadow-[8px_8px_0px_0px_rgba(0,0,0,0.05)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)] hover:translate-x-[2px] hover:translate-y-[2px] uppercase tracking-wide"
+              className="px-8 py-4 rounded-none bg-white text-gray-900 border-2 border-gray-200 text-base font-bold hover:bg-gray-50 transition-all shadow-[8px_8px_0px_0px_rgba(0,0,0,0.05)] hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)] hover:translate-x-[2px] hover:translate-y-[2px] uppercase tracking-wide"
             >
               How It Works
             </Link>

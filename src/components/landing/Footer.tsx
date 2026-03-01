@@ -29,15 +29,15 @@ export default function Footer() {
           <div className="col-span-1 md:col-span-1">
             <span className="text-xl font-bold text-brand-red tracking-tight">SF</span>
             <p className="mt-4 text-sm text-gray-500">
-              Empowering academic integrity through transparent writing processes.
+              A writing platform that helps educators review authentic process evidence, not just final output.
             </p>
           </div>
           
           <div>
             <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase mb-4">Product</h3>
             <ul className="space-y-3">
-              <li><Link href="/editor" className="text-base hover:text-brand-red transition-colors">Student Editor</Link></li>
-              <li><Link href="/teacher" className="text-base hover:text-brand-red transition-colors">Teacher Dashboard</Link></li>
+              <li><Link href="/editor" className="text-base hover:text-brand-red transition-colors">Editor</Link></li>
+              <li><Link href="/teacher" className="text-base hover:text-brand-red transition-colors">Teacher Viewer</Link></li>
             </ul>
           </div>
 
