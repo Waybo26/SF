@@ -162,7 +162,7 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
   return (
     <div
       style={{
-        maxWidth: "1400px",
+        maxWidth: "1600px",
         margin: "0 auto",
         padding: "12px 20px",
         fontFamily:
@@ -459,26 +459,34 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
           </div>
           <div
             style={{
-              border: "1px solid #e5e7eb",
+              background: "#e8eaed",
               borderRadius: "6px",
-              padding: "32px 48px",
-              background: "white",
+              border: "1px solid #e5e7eb",
               flex: 1,
               overflowY: "auto",
-              fontSize: "12pt",
-              lineHeight: "1.5",
-              fontFamily: '"Times New Roman", Times, serif',
-              color: "#000",
+              padding: "20px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
             }}
           >
-            {currentContent ? (
-              <div dangerouslySetInnerHTML={{ __html: currentContent }} />
-            ) : (
-              <div style={{ color: "#999", fontStyle: "italic" }}>
-                No content at this position. Move the timeline to see the
-                document.
-              </div>
-            )}
+            <div
+              className="sf-viewer-page"
+            >
+              {/* Page break overlay */}
+              <div className="sf-page-breaks" />
+              {currentContent ? (
+                <div
+                  style={{ position: "relative", zIndex: 3 }}
+                  dangerouslySetInnerHTML={{ __html: currentContent }}
+                />
+              ) : (
+                <div style={{ color: "#999", fontStyle: "italic", position: "relative", zIndex: 3 }}>
+                  No content at this position. Move the timeline to see the
+                  document.
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

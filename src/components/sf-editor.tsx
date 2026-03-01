@@ -450,9 +450,8 @@ export default function SFEditor({
     <div
       className="sf-editor-root"
       style={{
-        maxWidth: "900px",
-        margin: "0 auto",
-        padding: "20px",
+        minHeight: "100vh",
+        background: "#e8eaed",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
@@ -461,16 +460,19 @@ export default function SFEditor({
       <div
         className="sf-toolbar"
         style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
           display: "flex",
           gap: "2px",
           padding: "4px 8px",
           background: "#f8f9fa",
-          borderRadius: "8px 8px 0 0",
           border: "1px solid #dadce0",
-          borderBottom: "none",
+          borderBottom: "1px solid #dadce0",
           flexWrap: "wrap",
           alignItems: "center",
           minHeight: "40px",
+          justifyContent: "center",
         }}
       >
         {/* ── Font Family ──────────────────────────────────────── */}
@@ -986,28 +988,42 @@ export default function SFEditor({
         </TBtn>
       </div>
 
-      {/* ── Editor Area ───────────────────────────────────────── */}
+      {/* ── Editor Area (Page Card) ──────────────────────────── */}
       <div
-        className="sf-editor-content"
-        onClick={() => editor?.commands.focus()}
         style={{
-          border: "1px solid #dadce0",
-          borderTop: "none",
-          minHeight: "500px",
-          padding: "40px 60px",
-          cursor: "text",
+          padding: "30px 0 60px",
           display: "flex",
           flexDirection: "column",
-          background: "white",
-          borderRadius: "0 0 8px 8px",
-          fontSize: "12pt",
-          lineHeight: "1.5",
-          fontFamily: '"Times New Roman", Times, serif',
-          color: "#000",
+          alignItems: "center",
+          overflowY: "auto",
+          flex: 1,
         }}
       >
-        <div style={{ flex: 1 }}>
-          <EditorContent editor={editor} />
+        <div
+          className="sf-editor-page"
+          onClick={() => editor?.commands.focus()}
+          style={{
+            width: "8.5in",
+            minHeight: "11in",
+            padding: "1in",
+            cursor: "text",
+            display: "flex",
+            flexDirection: "column",
+            background: "white",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
+            fontSize: "12pt",
+            lineHeight: "1.5",
+            fontFamily: '"Times New Roman", Times, serif',
+            color: "#000",
+            boxSizing: "border-box",
+            position: "relative",
+          }}
+        >
+          {/* Page break overlay */}
+          <div className="sf-page-breaks" />
+          <div style={{ flex: 1, position: "relative", zIndex: 3 }}>
+            <EditorContent editor={editor} />
+          </div>
         </div>
       </div>
 
@@ -1016,9 +1032,13 @@ export default function SFEditor({
         style={{
           display: "flex",
           gap: "8px",
-          padding: "12px 0",
+          padding: "12px 20px",
           alignItems: "center",
           flexWrap: "wrap",
+          maxWidth: "8.5in",
+          margin: "0 auto",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         {showSnapshotInput ? (
@@ -1150,6 +1170,10 @@ export default function SFEditor({
           fontSize: "12px",
           color: "#5f6368",
           flexWrap: "wrap",
+          maxWidth: "8.5in",
+          margin: "0 auto 20px",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         <span>Words: {wordCount}</span>

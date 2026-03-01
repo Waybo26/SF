@@ -82,7 +82,17 @@ function applyEvent(state: EditorState, event: SFEvent): EditorState {
     case "keystroke": {
       if (event.key === "Enter") {
         const pos = clampPos(event.position, state.doc);
-        tr = state.tr.split(pos);
+        const $pos = state.doc.resolve(pos);
+
+        if ($pos.parent.isTextblock) {
+          // Position is inside a text block (paragraph, heading, etc.) — split it
+          tr = state.tr.split(pos);
+        } else {
+          // Position is at a block boundary (between paragraphs, etc.)
+          // Insert a new empty paragraph at this position
+          const newPara = sfSchema.node("paragraph");
+          tr = state.tr.insert(pos, newPara);
+        }
       } else if (event.key.length === 1) {
         const pos = clampPos(event.position, state.doc);
         tr = state.tr.insertText(event.key, pos);
