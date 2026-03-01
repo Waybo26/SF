@@ -56,6 +56,33 @@ body {
   line-height: 1.55;
 }
 
+/* ===== Minimal Scrollbar Styling ===== */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+/* Chrome / Safari / Edge */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
 /* ===== TipTap / ProseMirror Editor Styles ===== */
 
 /* Base: remove browser focus outline and fill container */
@@ -66,56 +93,10 @@ body {
 
 /* ===== Page Layout ===== */
 
-/* Page break visual indicator — repeating horizontal line every page of content.
-   Each page = 11in total, with 1in top + 1in bottom margin = 9in (864px) of content.
-   The gradient draws a visual separator at each page boundary. */
-.sf-page-breaks {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  z-index: 1;
-  /* Each page is 11in total. The first page starts at 0, so the first break
-     is at 11in. We draw a 20px gray "gap" simulating the space between pages. */
-  background-image:
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(11in - 10px),
-      #e8eaed calc(11in - 10px),
-      #e8eaed calc(11in + 10px),
-      transparent calc(11in + 10px)
-    );
-  background-position: top;
-}
-
-/* Override the page shadow to show page separation more clearly —
-   a subtle dashed line at the page boundary position. */
-.sf-page-break-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 0;
-  border-top: 1px dashed #bbb;
-  pointer-events: none;
-  z-index: 2;
-}
-
-/* Viewer page card */
+/* Viewer page card — base styling is applied inline; this class is
+   kept for sub-element selectors (p, h1, lists, etc.) below. */
 .sf-viewer-page {
-  width: 8.5in;
-  min-height: 11in;
-  padding: 1in;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
-  font-size: 12pt;
-  line-height: 1.5;
-  font-family: "Times New Roman", Times, serif;
-  color: #000;
-  box-sizing: border-box;
-  position: relative;
+  /* Intentionally empty — layout styles are set inline via JS constants */
 }
 
 /* Viewer paragraph styling — match the editor's .ProseMirror p rules */

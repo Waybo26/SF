@@ -292,17 +292,17 @@ export default function StudentWritePage() {
       <div style={{ maxWidth: "600px", margin: "0 auto", padding: "40px 20px" }}>
         <p style={{ color: "#dc2626", fontSize: "14px" }}>{status}</p>
         <a
-          href={`/student/class/${classId}`}
+          href="/student"
           style={{ color: "#1d4ed8", fontSize: "14px" }}
         >
-          Back to class
+          Back to My Classes
         </a>
       </div>
     );
   }
 
   return (
-    <div>
+    <div style={{ display: "grid", gridTemplateRows: "auto 1fr", height: "100vh", overflow: "hidden" }}>
       {/* Assignment info bar with breadcrumb */}
       <div
         style={{
@@ -327,12 +327,9 @@ export default function StudentWritePage() {
             My Classes
           </a>
           {" / "}
-          <a
-            href={`/student/class/${classId}`}
-            style={{ color: "#1d4ed8", textDecoration: "none" }}
-          >
+          <span style={{ color: "#64748b" }}>
             {className}
-          </a>
+          </span>
           {" / "}
           <span style={{ color: "#64748b" }}>Write</span>
         </div>

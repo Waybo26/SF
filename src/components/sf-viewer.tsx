@@ -22,6 +22,41 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
   const [statsOpen, setStatsOpen] = useState(false);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ── Page pagination ──────────────────────────────────────────────
+  const PAGE_HEIGHT_PX = 11 * 96; // 1056px — full page including margins
+  const PAGE_CONTENT_PX = 9 * 96; // 864px — content area per page (11in - 2in margins)
+  const PAGE_GAP_PX = 20; // gap between visual pages
+  const [numPages, setNumPages] = useState(1);
+  const viewerContentRef = useRef<HTMLDivElement>(null);
+
+  // Watch the content height and recalculate page count
+  useEffect(() => {
+    const el = viewerContentRef.current;
+    if (!el) return;
+
+    const recalc = () => {
+      const h = el.scrollHeight;
+      const pages = Math.max(1, Math.ceil(h / PAGE_CONTENT_PX));
+      setNumPages(pages);
+    };
+
+    recalc();
+
+    const ro = new ResizeObserver(recalc);
+    ro.observe(el);
+
+    const mo = new MutationObserver(recalc);
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [PAGE_CONTENT_PX]);
+
+  // Total height of the page card: N pages + (N-1) gaps
+  const viewerPageCardHeight = numPages * PAGE_HEIGHT_PX + (numPages - 1) * PAGE_GAP_PX;
+
   // Load .sf content
   const loadContent = useCallback((json: string) => {
     try {
@@ -474,9 +509,11 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
               className="sf-viewer-page"
               style={{
                 width: "8.5in",
-                minHeight: "11in",
-                padding: "1in",
-                background: "white",
+                height: `${viewerPageCardHeight}px`,
+                padding: "0 1in",
+                backgroundColor: "transparent",
+                backgroundImage: `repeating-linear-gradient(to bottom, white 0px, white ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX + PAGE_GAP_PX}px)`,
+                backgroundPosition: "top",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
                 fontSize: "12pt",
                 lineHeight: "1.5",
@@ -486,19 +523,39 @@ export default function SFViewer({ sfContent }: SFViewerProps) {
                 position: "relative",
               }}
             >
-              {/* Page break overlay */}
-              <div className="sf-page-breaks" />
-              {currentContent ? (
-                <div
-                  style={{ position: "relative", zIndex: 3, width: "100%" }}
-                  dangerouslySetInnerHTML={{ __html: currentContent }}
-                />
-              ) : (
-                <div style={{ color: "#999", fontStyle: "italic", position: "relative", zIndex: 3 }}>
-                  No content at this position. Move the timeline to see the
-                  document.
-                </div>
-              )}
+              {/* Page break overlay — thin line at each boundary */}
+              <div style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                pointerEvents: "none",
+                zIndex: 1,
+                backgroundImage: `repeating-linear-gradient(to bottom, transparent 0px, transparent ${PAGE_HEIGHT_PX - 1}px, #c0c4c8 ${PAGE_HEIGHT_PX - 1}px, #c0c4c8 ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX + PAGE_GAP_PX}px)`,
+                backgroundPosition: "top",
+              }} />
+              {/* Content wrapper with page margins */}
+              <div
+                ref={viewerContentRef}
+                style={{
+                  position: "relative",
+                  zIndex: 3,
+                  paddingTop: "1in",
+                  paddingBottom: "1in",
+                  minHeight: `${PAGE_CONTENT_PX}px`,
+                  width: "100%",
+                }}
+              >
+                {currentContent ? (
+                  <div dangerouslySetInnerHTML={{ __html: currentContent }} />
+                ) : (
+                  <div style={{ color: "#999", fontStyle: "italic" }}>
+                    No content at this position. Move the timeline to see the
+                    document.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

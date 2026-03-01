@@ -245,6 +245,53 @@ export default function SFEditor({
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(initialSubmitted);
 
+  // ── Toast notification ────────────────────────────────────────────
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(msg);
+    toastTimer.current = setTimeout(() => setToast(null), 2000);
+  }, []);
+
+  // ── Page pagination ──────────────────────────────────────────────
+  // 11in page = 1056px at 96dpi. Content area per page = 11in - 1in top - 1in bottom = 9in = 864px.
+  const PAGE_HEIGHT_PX = 11 * 96; // 1056px — full page including padding
+  const PAGE_CONTENT_PX = 9 * 96; // 864px — writable area per page
+  const PAGE_GAP_PX = 20; // gap between visual pages
+  const [numPages, setNumPages] = useState(1);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Watch the content height and recalculate page count
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+
+    const recalc = () => {
+      // scrollHeight of the content wrapper (inside 1in padding)
+      const h = el.scrollHeight;
+      const pages = Math.max(1, Math.ceil(h / PAGE_CONTENT_PX));
+      setNumPages(pages);
+    };
+
+    recalc();
+
+    const ro = new ResizeObserver(recalc);
+    ro.observe(el);
+
+    // Also recalc on any DOM mutation (e.g. typing, paste, delete)
+    const mo = new MutationObserver(recalc);
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [PAGE_CONTENT_PX]);
+
+  // Total height of the page card: N pages + (N-1) gaps
+  const pageCardHeight = numPages * PAGE_HEIGHT_PX + (numPages - 1) * PAGE_GAP_PX;
+
   // Color picker popover state
   const [showTextColor, setShowTextColor] = useState(false);
   const [showHighlight, setShowHighlight] = useState(false);
@@ -365,20 +412,22 @@ export default function SFEditor({
         const sfJson = logger.serialize();
         onSave(sfJson);
         setLastSaved(new Date().toLocaleTimeString());
+        showToast("Auto-saved");
       }
     }, 30000);
     return () => clearInterval(interval);
-  }, [logger, onSave, isSubmitted, editor]);
+  }, [logger, onSave, isSubmitted, editor, showToast]);
 
   // Save snapshot
   const handleSaveSnapshot = useCallback(() => {
     if (!editor || !snapshotLabel.trim()) return;
     const html = editor.getHTML();
     logger.createSnapshot(snapshotLabel.trim(), html);
+    showToast(`Snapshot "${snapshotLabel.trim()}" saved`);
     setSnapshotLabel("");
     setShowSnapshotInput(false);
     setEventCount(logger.getEventCount());
-  }, [editor, logger, snapshotLabel]);
+  }, [editor, logger, snapshotLabel, showToast]);
 
   // Submit
   const handleSubmit = useCallback(() => {
@@ -395,11 +444,12 @@ export default function SFEditor({
 
     const sfJson = logger.serialize();
     setIsSubmitted(true);
+    showToast("Submitted successfully");
 
     if (onSubmit) {
       onSubmit(sfJson);
     }
-  }, [editor, logger, onSubmit]);
+  }, [editor, logger, onSubmit, showToast]);
 
   // Manual save
   const handleManualSave = useCallback(() => {
@@ -408,7 +458,8 @@ export default function SFEditor({
     const sfJson = logger.serialize();
     onSave(sfJson);
     setLastSaved(new Date().toLocaleTimeString());
-  }, [logger, onSave, editor]);
+    showToast("Saved");
+  }, [logger, onSave, editor, showToast]);
 
   // Download .sf file
   const handleDownload = useCallback(() => {
@@ -450,12 +501,12 @@ export default function SFEditor({
     <div
       className="sf-editor-root"
       style={{
-        height: "100vh",
+        display: "grid",
+        gridTemplateRows: "auto 1fr auto auto",
+        height: "100%",
         background: "#e8eaed",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        display: "flex",
-        flexDirection: "column",
         overflow: "hidden",
       }}
     >
@@ -463,7 +514,6 @@ export default function SFEditor({
       <div
         className="sf-toolbar"
         style={{
-          flexShrink: 0,
           zIndex: 50,
           display: "flex",
           gap: "2px",
@@ -477,6 +527,30 @@ export default function SFEditor({
           justifyContent: "center",
         }}
       >
+        {/* ── Dashboard link ───────────────────────────────────── */}
+        <a
+          href="/student"
+          title="Back to Dashboard"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "28px",
+            height: "28px",
+            borderRadius: "4px",
+            color: "#5f6368",
+            marginRight: "4px",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#e8eaed")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1.5l-6.5 5V14a.5.5 0 00.5.5h4V10h4v4.5h4a.5.5 0 00.5-.5V6.5L8 1.5z" />
+          </svg>
+        </a>
+
+        <div style={{ width: "1px", height: "20px", background: "#dadce0", margin: "0 4px" }} />
+
         {/* ── Font Family ──────────────────────────────────────── */}
         <select
           value={currentFontFamily}
@@ -998,21 +1072,39 @@ export default function SFEditor({
           flexDirection: "column",
           alignItems: "center",
           overflowY: "auto",
-          flex: 1,
           minHeight: 0,
+          background: "#e8eaed",
+          position: "relative",
         }}
       >
+        {/* Toast notification */}
+        {toast && (
+          <div
+            style={{
+              position: "sticky",
+              top: 8,
+              zIndex: 100,
+              padding: "6px 16px",
+              background: "#323232",
+              color: "#fff",
+              fontSize: "13px",
+              borderRadius: "6px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+              pointerEvents: "none",
+              marginBottom: -32,
+            }}
+          >
+            {toast}
+          </div>
+        )}
         <div
           className="sf-editor-page"
           onClick={() => editor?.commands.focus()}
           style={{
             width: "8.5in",
-            minHeight: "11in",
-            padding: "1in",
+            height: `${pageCardHeight}px`,
+            padding: "0 1in",
             cursor: "text",
-            display: "flex",
-            flexDirection: "column",
-            background: "white",
             boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)",
             fontSize: "12pt",
             lineHeight: "1.5",
@@ -1020,11 +1112,36 @@ export default function SFEditor({
             color: "#000",
             boxSizing: "border-box",
             position: "relative",
+            /* White background repeats every page-height with a gap between */
+            backgroundColor: "transparent",
+            backgroundImage: `repeating-linear-gradient(to bottom, white 0px, white ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX + PAGE_GAP_PX}px)`,
+            backgroundPosition: "top",
           }}
         >
-          {/* Page break overlay */}
-          <div className="sf-page-breaks" />
-          <div style={{ flex: 1, position: "relative", zIndex: 3 }}>
+          {/* Page break overlay — thin line at each boundary */}
+          <div style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            pointerEvents: "none",
+            zIndex: 1,
+            backgroundImage: `repeating-linear-gradient(to bottom, transparent 0px, transparent ${PAGE_HEIGHT_PX - 1}px, #c0c4c8 ${PAGE_HEIGHT_PX - 1}px, #c0c4c8 ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX}px, transparent ${PAGE_HEIGHT_PX + PAGE_GAP_PX}px)`,
+            backgroundPosition: "top",
+          }} />
+          {/* Content wrapper — 1in top padding per page via paddingTop,
+              the content flows continuously. */}
+          <div
+            ref={contentRef}
+            style={{
+              position: "relative",
+              zIndex: 3,
+              paddingTop: "1in",
+              paddingBottom: "1in",
+              minHeight: `${PAGE_CONTENT_PX}px`,
+            }}
+          >
             <EditorContent editor={editor} />
           </div>
         </div>
@@ -1038,11 +1155,8 @@ export default function SFEditor({
           padding: "8px 20px",
           alignItems: "center",
           flexWrap: "wrap",
-          maxWidth: "8.5in",
-          margin: "0 auto",
           width: "100%",
           boxSizing: "border-box",
-          flexShrink: 0,
           background: "#f8f9fa",
           borderTop: "1px solid #dadce0",
         }}
@@ -1176,7 +1290,6 @@ export default function SFEditor({
           color: "#5f6368",
           flexWrap: "wrap",
           justifyContent: "center",
-          flexShrink: 0,
         }}
       >
         <span>Words: {wordCount}</span>
