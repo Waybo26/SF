@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { parseSFFile, htmlToPlainText, countWords } from "@/lib/sf-parser";
 import { analyzeSFFile } from "@/lib/sf-analyzer";
 
+const AI_STATUS = {
+  PROCESSING: "PROCESSING",
+  FAILED: "FAILED",
+} as const;
+
 // GET /api/submissions/[id] - Get a single submission with .sf content
 export async function GET(
   _request: NextRequest,
@@ -98,6 +103,8 @@ export async function PUT(
     updateData.status = status;
     if (status === "SUBMITTED") {
       updateData.submittedAt = new Date();
+      updateData.ai_detection_status = AI_STATUS.PROCESSING;
+      updateData.ai_detection_details = null;
     }
   }
 
@@ -116,6 +123,43 @@ export async function PUT(
   return NextResponse.json(submission);
 }
 
+// POST /api/submissions/[id] - Re-run AI analysis for a submitted submission
+export async function POST(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const existing = await prisma.submission.findUnique({ where: { id } });
+
+  if (!existing) {
+    return NextResponse.json({ error: "Submission not found" }, { status: 404 });
+  }
+
+  if (existing.status !== "SUBMITTED" && existing.status !== "GRADED") {
+    return NextResponse.json(
+      { error: "AI analysis can only run for submitted assignments" },
+      { status: 400 }
+    );
+  }
+
+  if (!existing.sfFile) {
+    return NextResponse.json({ error: "No .sf content to analyze" }, { status: 400 });
+  }
+
+  await prisma.submission.update({
+    where: { id },
+    data: {
+      ai_detection_status: AI_STATUS.PROCESSING,
+      ai_detection_details: null,
+    },
+  });
+
+  runAIAnalysis(id, existing.sfFile);
+
+  return NextResponse.json({ ok: true });
+}
+
 // Background AI analysis - runs without blocking the HTTP response
 async function runAIAnalysis(submissionId: string, sfFile: string) {
   try {
@@ -132,6 +176,20 @@ async function runAIAnalysis(submissionId: string, sfFile: string) {
 
     console.log(`AI Analysis for submission ${submissionId}: ${analysisResult.verdict} (confidence: ${analysisResult.confidence})`);
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown AI analysis error";
+
+    await prisma.submission.update({
+      where: { id: submissionId },
+      data: {
+        ai_detection_status: AI_STATUS.FAILED,
+        ai_detection_details: JSON.stringify({
+          error: errorMessage,
+          timestamp: new Date().toISOString(),
+        }),
+      },
+    });
+
     // Log but don't fail - this runs in the background after the response was already sent
     console.error(`AI analysis failed for submission ${submissionId}:`, error);
   }

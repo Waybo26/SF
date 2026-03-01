@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import SFViewer from "@/components/sf-viewer";
 
@@ -45,6 +45,16 @@ export default function StudentSubmissionPage() {
   const [classInfo, setClassInfo] = useState<ClassInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRetryingAnalysis, setIsRetryingAnalysis] = useState(false);
+
+  const refreshSubmission = useCallback(async (submissionId: string) => {
+    const fullRes = await fetch(`/api/submissions/${submissionId}`);
+    if (!fullRes.ok) {
+      throw new Error("Failed to refresh submission details");
+    }
+    const fullSub = await fullRes.json();
+    setSubmission(fullSub);
+  }, []);
 
   useEffect(() => {
     if (!classId || !assignmentId || !studentId) return;
@@ -94,6 +104,50 @@ export default function StudentSubmissionPage() {
 
     fetchData();
   }, [classId, assignmentId, studentId]);
+
+  useEffect(() => {
+    if (!submission?.id || submission.status !== "SUBMITTED") return;
+
+    const isPending =
+      !submission.ai_detection_status ||
+      submission.ai_detection_status === "PROCESSING";
+
+    if (!isPending) return;
+
+    const interval = setInterval(() => {
+      refreshSubmission(submission.id).catch(() => {
+        // Keep existing state; the next poll can retry.
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [
+    submission?.id,
+    submission?.status,
+    submission?.ai_detection_status,
+    refreshSubmission,
+  ]);
+
+  const handleRetryAnalysis = useCallback(async () => {
+    if (!submission?.id) return;
+
+    setIsRetryingAnalysis(true);
+    try {
+      const response = await fetch(`/api/submissions/${submission.id}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to re-run AI analysis");
+      }
+
+      await refreshSubmission(submission.id);
+    } catch {
+      // Keep UI stable; teacher can retry again.
+    } finally {
+      setIsRetryingAnalysis(false);
+    }
+  }, [submission?.id, refreshSubmission]);
 
   const assignment = classInfo?.assignments.find((a) => a.id === assignmentId);
 
@@ -246,6 +300,8 @@ export default function StudentSubmissionPage() {
         <AIAnalysisPanel
           status={submission.ai_detection_status}
           details={submission.ai_detection_details}
+          onRetry={handleRetryAnalysis}
+          retrying={isRetryingAnalysis}
         />
       )}
 
@@ -280,9 +336,13 @@ interface AIAnalysisDetails {
 function AIAnalysisPanel({
   status,
   details,
+  onRetry,
+  retrying,
 }: {
   status: string | null;
   details: string | null;
+  onRetry: () => void;
+  retrying: boolean;
 }) {
   let parsed: AIAnalysisDetails | null = null;
   if (details) {
@@ -295,6 +355,10 @@ function AIAnalysisPanel({
 
   const getVerdictStyle = (verdict: string | null) => {
     switch (verdict) {
+      case "PROCESSING":
+        return { background: "#e0f2fe", color: "#075985", borderColor: "#bae6fd" };
+      case "FAILED":
+        return { background: "#fff7ed", color: "#9a3412", borderColor: "#fed7aa" };
       case "LIKELY_HUMAN":
         return { background: "#dcfce7", color: "#166534", borderColor: "#bbf7d0" };
       case "SUSPICIOUS":
@@ -308,6 +372,10 @@ function AIAnalysisPanel({
 
   const getVerdictLabel = (verdict: string | null) => {
     switch (verdict) {
+      case "PROCESSING":
+        return "Processing";
+      case "FAILED":
+        return "Failed";
       case "LIKELY_HUMAN":
         return "Likely Human";
       case "SUSPICIOUS":
@@ -335,10 +403,34 @@ function AIAnalysisPanel({
           color: "#9ca3af",
         }}
       >
-        AI analysis pending -- results will appear here once processing completes.
+        <div style={{ marginBottom: "8px" }}>
+          AI analysis pending -- results will appear here once processing completes.
+        </div>
+        <button
+          onClick={onRetry}
+          disabled={retrying}
+          style={{
+            padding: "4px 10px",
+            borderRadius: "6px",
+            border: "1px solid #d1d5db",
+            background: "white",
+            color: "#6b7280",
+            fontSize: "12px",
+            fontWeight: 600,
+            cursor: retrying ? "not-allowed" : "pointer",
+            opacity: retrying ? 0.6 : 1,
+          }}
+        >
+          {retrying ? "Retrying..." : "Retry Analysis"}
+        </button>
       </div>
     );
   }
+
+  const failedReason =
+    status === "FAILED" && parsed && "error" in parsed
+      ? String((parsed as { error?: unknown }).error ?? "Unknown error")
+      : null;
 
   return (
     <div
@@ -381,7 +473,44 @@ function AIAnalysisPanel({
             Confidence: {Math.round(parsed.confidence * 100)}%
           </span>
         )}
+        {(status === "PROCESSING" || status === "FAILED") && (
+          <button
+            onClick={onRetry}
+            disabled={retrying || status === "PROCESSING"}
+            style={{
+              marginLeft: "auto",
+              padding: "4px 10px",
+              borderRadius: "6px",
+              border: `1px solid ${verdictStyle.borderColor}`,
+              background: "rgba(255,255,255,0.75)",
+              color: verdictStyle.color,
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor:
+                retrying || status === "PROCESSING" ? "not-allowed" : "pointer",
+              opacity: retrying || status === "PROCESSING" ? 0.6 : 1,
+            }}
+          >
+            {status === "PROCESSING"
+              ? "Analyzing..."
+              : retrying
+                ? "Retrying..."
+                : "Retry Analysis"}
+          </button>
+        )}
       </div>
+
+      {failedReason && (
+        <p
+          style={{
+            margin: "0 0 10px 0",
+            fontSize: "12px",
+            color: verdictStyle.color,
+          }}
+        >
+          {failedReason}
+        </p>
+      )}
 
       {/* Reasons list */}
       {parsed?.reasons && parsed.reasons.length > 0 && (

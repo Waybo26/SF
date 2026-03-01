@@ -122,6 +122,10 @@ export default function AssignmentDetailPage() {
 
   const getAIStatusStyle = (status: string | null) => {
     switch (status) {
+      case "PROCESSING":
+        return { background: "#e0f2fe", color: "#075985", border: "1px solid #bae6fd" };
+      case "FAILED":
+        return { background: "#fff7ed", color: "#9a3412", border: "1px solid #fed7aa" };
       case "LIKELY_HUMAN":
         return { background: "#dcfce7", color: "#166534", border: "1px solid #bbf7d0" };
       case "SUSPICIOUS":
@@ -135,6 +139,10 @@ export default function AssignmentDetailPage() {
 
   const getAIStatusLabel = (status: string | null) => {
     switch (status) {
+      case "PROCESSING":
+        return "Processing";
+      case "FAILED":
+        return "Failed";
       case "LIKELY_HUMAN":
         return "Likely Human";
       case "SUSPICIOUS":

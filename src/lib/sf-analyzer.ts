@@ -98,7 +98,8 @@ export async function analyzeSFFile(sfFile: SFFile): Promise<AIAnalysisResult> {
     });
   });
 
-  const rawResult = rows?.[0]?.ANALYSIS_RESULT;
+  const rawResult =
+    rows?.[0]?.ANALYSIS_RESULT ?? rows?.[0]?.analysis_result;
 
   if (!rawResult) {
     throw new Error("No result returned from Snowflake Cortex AI");

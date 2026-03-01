@@ -13,6 +13,7 @@ export async function getSnowflakeConnection(): Promise<snowflake.Connection> {
   const {
     SNOWFLAKE_ACCOUNT,
     SNOWFLAKE_USER,
+    SNOWFLAKE_PASSWORD,
     SNOWFLAKE_PRIVATE_KEY_PATH,
     SNOWFLAKE_PRIVATE_KEY_PASSPHRASE,
     SNOWFLAKE_WAREHOUSE,
@@ -23,7 +24,6 @@ export async function getSnowflakeConnection(): Promise<snowflake.Connection> {
   const missingVars = [
     ['SNOWFLAKE_ACCOUNT', SNOWFLAKE_ACCOUNT],
     ['SNOWFLAKE_USER', SNOWFLAKE_USER],
-    ['SNOWFLAKE_PRIVATE_KEY_PATH', SNOWFLAKE_PRIVATE_KEY_PATH],
     ['SNOWFLAKE_WAREHOUSE', SNOWFLAKE_WAREHOUSE],
     ['SNOWFLAKE_DATABASE', SNOWFLAKE_DATABASE],
     ['SNOWFLAKE_ROLE', SNOWFLAKE_ROLE],
@@ -35,45 +35,94 @@ export async function getSnowflakeConnection(): Promise<snowflake.Connection> {
 
   const account = SNOWFLAKE_ACCOUNT as string;
   const username = SNOWFLAKE_USER as string;
-  const privateKeyPath = SNOWFLAKE_PRIVATE_KEY_PATH as string;
   const warehouse = SNOWFLAKE_WAREHOUSE as string;
   const database = SNOWFLAKE_DATABASE as string;
   const role = SNOWFLAKE_ROLE as string;
 
-  // Read the private key file
-  // Ensure the path is correct relative to where the Node.js process is run
-  if (!fs.existsSync(privateKeyPath)) {
-    throw new Error(`Snowflake private key file not found at path: ${privateKeyPath}`);
+  const hasPrivateKeyAuth = !!SNOWFLAKE_PRIVATE_KEY_PATH;
+  const hasPasswordAuth = !!SNOWFLAKE_PASSWORD;
+
+  if (!hasPrivateKeyAuth && !hasPasswordAuth) {
+    throw new Error(
+      'Snowflake auth not configured. Set SNOWFLAKE_PRIVATE_KEY_PATH (JWT) or SNOWFLAKE_PASSWORD (password).'
+    );
   }
 
-  const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
-
-  try {
-    connection = snowflake.createConnection({
-      account,
-      username,
-      privateKey: privateKey,
-      privateKeyPass: SNOWFLAKE_PRIVATE_KEY_PASSPHRASE,
-      warehouse,
-      database,
-      role,
-    });
-
+  const connect = async (config: Parameters<typeof snowflake.createConnection>[0]) => {
+    connection = snowflake.createConnection(config);
     await new Promise<void>((resolve, reject) => {
       connection!.connect((err) => {
         if (err) {
-          console.error('Error connecting to Snowflake:', err);
           reject(err);
         } else {
-          console.log('Successfully connected to Snowflake.');
           resolve();
         }
       });
     });
-
     return connection;
+  };
+
+  try {
+    if (hasPrivateKeyAuth) {
+      const privateKeyPath = SNOWFLAKE_PRIVATE_KEY_PATH as string;
+
+      if (!fs.existsSync(privateKeyPath)) {
+        throw new Error(`Snowflake private key file not found at path: ${privateKeyPath}`);
+      }
+
+      const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
+      if (
+        !privateKey.includes('BEGIN PRIVATE KEY') &&
+        !privateKey.includes('BEGIN ENCRYPTED PRIVATE KEY')
+      ) {
+        throw new Error(
+          'Snowflake private key file is not a valid PEM private key. Expected BEGIN PRIVATE KEY or BEGIN ENCRYPTED PRIVATE KEY.'
+        );
+      }
+
+      try {
+        const jwtConnection = await connect({
+          authenticator: 'SNOWFLAKE_JWT',
+          account,
+          username,
+          privateKey,
+          privateKeyPass: SNOWFLAKE_PRIVATE_KEY_PASSPHRASE,
+          warehouse,
+          database,
+          role,
+        });
+        console.log('Successfully connected to Snowflake using JWT auth.');
+        return jwtConnection;
+      } catch (jwtError) {
+        const message = jwtError instanceof Error ? jwtError.message : String(jwtError);
+        console.error('Snowflake JWT authentication failed:', jwtError);
+
+        if (!hasPasswordAuth) {
+          throw new Error(
+            `Snowflake JWT authentication failed: ${message}. Verify that this private key matches the public key configured on user ${username}.`
+          );
+        }
+      }
+    }
+
+    if (hasPasswordAuth) {
+      const passwordConnection = await connect({
+        authenticator: 'SNOWFLAKE',
+        account,
+        username,
+        password: SNOWFLAKE_PASSWORD,
+        warehouse,
+        database,
+        role,
+      });
+      console.log('Successfully connected to Snowflake using password auth.');
+      return passwordConnection;
+    }
+
+    throw new Error('Unable to establish Snowflake connection.');
 
   } catch (error) {
+    connection = null;
     console.error('Failed to establish Snowflake connection:', error);
     throw error;
   }
