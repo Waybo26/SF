@@ -1,0 +1,154 @@
+:root{
+  --bg:#ffffff;
+  --card:#ffffff;
+  --muted:#9aa4b2;
+  --accent:#949594;
+  --danger:#ef4444;
+  --glass: rgba(255, 255, 255, 0.03);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: #949594;
+  color:#e6eef7;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+.center{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+.card{
+  width:100%;
+  max-width:420px;
+  background:#9D1535;
+  border:1px solid rgb(255, 255, 255);
+  padding:28px;
+  border-radius:12px;
+  box-shadow: 0 6px 30px rgba(2,6,23,0.6);
+}
+
+.card h1{
+  margin:0 0 18px 0;
+  font-size:20px;
+  letter-spacing:0.2px;
+}
+
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+input[type="email"],
+input[type="password"]{
+  width:100%;
+  padding:12px 12px;
+  background:var(--glass);
+  border:1px solid rgb(255, 255, 255);
+  color:var(--muted);
+  border-radius:8px;
+  outline:none;
+  margin-bottom:14px;
+  transition:box-shadow .15s, border-color .15s;
+}
+input:focus{
+  box-shadow:0 0 0 4px rgba(255, 255, 255, 0.12);
+  border-color:var(--accent);
+  color: #e6eef7;
+}
+
+.row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.remember{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.forgot{color:var(--muted);font-size:13px;text-decoration:none}
+
+/* ...existing code... */
+button{
+  width:100%;
+  padding:12px;
+  border-radius:8px;
+  background:#949594;
+  border:0;
+  color:white;
+  font-weight:600;
+  cursor:pointer;
+  margin-top:6px;
+
+  /* smooth grow on hover */
+  transition: transform .14s cubic-bezier(.2,.9,.2,1),
+              box-shadow .14s ease,
+              background-color .14s ease,
+              filter .14s ease;
+  transform-origin: center;
+}
+
+button:hover{
+  transform: scale(1.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  background-color: color-mix(in srgb, var(--accent) 85%, black 15%); /* slight darken */
+}
+
+button:active{
+  transform: scale(0.995);
+}
+
+button:disabled{
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+
+.error{color:var(--danger);font-size:13px;min-height:20px;margin-bottom:6px}
+
+.alt{margin-top:14px;text-align:center;color:var(--muted);font-size:13px}
+.alt a{color:rgb(255, 255, 255);text-decoration:none;margin-left:6px;transition: color .12s ease, filter .12s ease;}
+.alt a:hover{
+    filter: brightness(.92);
+    color: #ffffff;
+}
+@media (max-width:480px){
+  .card{padding:20px;border-radius:10px}
+}
+
+/* ...existing code... */
+
+/* role toggle (segmented control) */
+.role-toggle{
+  display:inline-flex;
+  gap:8px;
+  margin-bottom:14px;
+  background: transparent;
+  border-radius: 999px;
+  align-items: center;
+}
+
+.role-btn{
+  padding:6px 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,0.06);
+  background: transparent;
+  color: var(--muted);
+  font-size:13px;
+  cursor:pointer;
+  transition: background-color .12s ease, color .12s ease, transform .12s ease;
+}
+.role-btn:hover{ transform: translateY(-1px); }
+
+.role-btn.active{
+  background: rgba(255,255,255,0.06);
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.12);
+}
+
+/* optional small badge showing current role (if used) */
+.role-indicator{
+  display:inline-block;
+  margin-left:8px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+/* ...existing code... */
